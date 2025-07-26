@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useTransition } from 'react';
@@ -69,6 +70,11 @@ export default function ContentGenerationPage() {
       const doc = new jsPDF();
       doc.html(document.querySelector('.markdown-body') as HTMLElement, {
         callback: function (doc) {
+          const pageCount = doc.internal.getNumberOfPages();
+          for(let i = 1; i <= pageCount; i++) {
+            doc.setPage(i);
+            doc.rect(5, 5, doc.internal.pageSize.width - 10, doc.internal.pageSize.height - 10, 'S');
+          }
           doc.save(`${form.getValues('topic') || 'generated-content'}.pdf`);
         },
         x: 10,
