@@ -8,7 +8,7 @@ import {
   ImageIcon,
   LayoutGrid,
   LogOut,
-  MessageCircleQuestion,
+  MessageCircle,
   Presentation,
   School,
   Sheet,
@@ -54,6 +54,11 @@ const navItems = [
     href: '/dashboard/worksheet-generation',
     icon: Sheet,
     label: 'Worksheet Generation',
+  },
+  {
+    href: '/dashboard/live-agent',
+    icon: MessageCircle,
+    label: 'Live Agent',
   },
 ];
 
