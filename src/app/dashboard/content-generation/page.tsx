@@ -4,12 +4,13 @@ import React, { useState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { generateLessonPlan } from '@/ai/flows/generate-lesson-plan';
+import { generateEducationalContent } from '@/ai/flows/generate-educational-content';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -24,16 +25,17 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Download, FileUp } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const formSchema = z.object({
   topic: z.string().min(3, { message: 'Topic must be at least 3 characters.' }),
   gradeLevel: z.string({ required_error: 'Please select a grade level.' }),
+  file: z.instanceof(File).optional(),
 });
 
 export default function ContentGenerationPage() {
-  const [lessonPlan, setLessonPlan] = useState('');
+  const [generatedContent, setGeneratedContent] = useState('');
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
@@ -44,17 +46,47 @@ export default function ContentGenerationPage() {
     },
   });
 
+  const fileRef = form.register('file');
+
+  const handleDownload = () => {
+    import('jspdf').then(jspdf => {
+      const { jsPDF } = jspdf;
+      const doc = new jsPDF();
+      doc.text(generatedContent, 10, 10);
+      doc.save(`${form.getValues('topic')}.pdf`);
+    });
+  };
+
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = error => reject(error);
+    });
+  };
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
     startTransition(async () => {
-      setLessonPlan('');
+      setGeneratedContent('');
       try {
-        const result = await generateLessonPlan(values);
-        if (result.lessonPlan) {
-          setLessonPlan(result.lessonPlan);
+        let fileDataUri: string | undefined = undefined;
+        if (values.file) {
+          fileDataUri = await fileToBase64(values.file);
+        }
+
+        const result = await generateEducationalContent({
+          topic: values.topic,
+          gradeLevel: values.gradeLevel,
+          fileDataUri: fileDataUri,
+        });
+
+        if (result.educationalContent) {
+          setGeneratedContent(result.educationalContent);
         } else {
             toast({
                 title: 'Error',
-                description: 'Failed to generate lesson plan. Please try again.',
+                description: 'Failed to generate content. Please try again.',
                 variant: 'destructive',
             });
         }
@@ -74,7 +106,7 @@ export default function ContentGenerationPage() {
       <div className="lg:col-span-1">
         <Card>
           <CardHeader>
-            <CardTitle>Generate Lesson Plan</CardTitle>
+            <CardTitle>Generate Educational Content</CardTitle>
           </CardHeader>
           <CardContent>
             <Form {...form}>
@@ -105,7 +137,7 @@ export default function ContentGenerationPage() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {[...Array(8)].map((_, i) => (
+                          {[...Array(12)].map((_, i) => (
                             <SelectItem key={i + 1} value={`Grade ${i + 1}`}>
                               Grade {i + 1}
                             </SelectItem>
@@ -116,6 +148,34 @@ export default function ContentGenerationPage() {
                     </FormItem>
                   )}
                 />
+
+                <FormField
+                    control={form.control}
+                    name="file"
+                    render={({ field }) => {
+                        return (
+                        <FormItem>
+                            <FormLabel>Upload File (Optional)</FormLabel>
+                             <FormControl>
+                               <div className="relative">
+                                  <FileUp className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                  <Input
+                                    type="file"
+                                    className="pl-10"
+                                    accept="image/*,application/pdf"
+                                    {...fileRef}
+                                  />
+                               </div>
+                            </FormControl>
+                            <FormDescription>
+                                Upload an image or PDF for context.
+                            </FormDescription>
+                            <FormMessage />
+                        </FormItem>
+                        );
+                    }}
+                />
+
                 <Button type="submit" className="w-full" disabled={isPending}>
                   {isPending ? (
                     <>
@@ -134,8 +194,14 @@ export default function ContentGenerationPage() {
 
       <div className="lg:col-span-2">
         <Card className="min-h-full">
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Generated Content</CardTitle>
+             {generatedContent && !isPending && (
+              <Button variant="outline" size="sm" onClick={handleDownload}>
+                <Download className="mr-2 h-4 w-4" />
+                Download PDF
+              </Button>
+            )}
           </CardHeader>
           <CardContent>
             {isPending && (
@@ -143,15 +209,15 @@ export default function ContentGenerationPage() {
                     <Loader2 className="h-8 w-8 animate-spin text-primary"/>
                 </div>
             )}
-            {lessonPlan ? (
+            {generatedContent ? (
               <Textarea
                 readOnly
-                className="w-full h-[500px] bg-muted/50 font-mono text-sm"
-                value={lessonPlan}
+                className="w-full h-[600px] bg-muted/50 font-mono text-sm whitespace-pre-wrap"
+                value={generatedContent}
               />
             ) : !isPending && (
               <div className="text-center text-muted-foreground p-8">
-                Your generated lesson plan will appear here.
+                Your generated educational content will appear here.
               </div>
             )}
           </CardContent>
