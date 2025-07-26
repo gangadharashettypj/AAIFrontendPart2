@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useTransition } from 'react';
@@ -25,9 +26,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Download, FileUp } from 'lucide-react';
+import { Loader2, Printer, FileUp } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { DownloadIcon } from 'lucide-react';
 
 
 const formSchema = z.object({
@@ -47,13 +47,28 @@ export default function WorksheetGenerationPage() {
     },
   });
 
-  const handleDownload = () => {
-    import('jspdf').then(jspdf => {
-      const { jsPDF } = jspdf;
-      const doc = new jsPDF();
-      doc.text(generatedWorksheet, 10, 10);
-      doc.save('generated-worksheet.pdf');
-    });
+  const handlePrint = () => {
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Print Worksheet</title>
+            <style>
+              body { font-family: sans-serif; padding: 2rem; }
+              pre { white-space: pre-wrap; word-wrap: break-word; }
+            </style>
+          </head>
+          <body>
+            <pre>${generatedWorksheet}</pre>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+      printWindow.focus();
+      printWindow.print();
+      printWindow.close();
+    }
   };
 
   const fileToBase64 = (file: File): Promise<string> => {
@@ -181,9 +196,9 @@ export default function WorksheetGenerationPage() {
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Generated Worksheet</CardTitle>
              {generatedWorksheet && !isPending && (
-              <Button variant="outline" size="sm" onClick={handleDownload}>
-                <DownloadIcon className="mr-2 h-4 w-4" />
-                Download PDF
+              <Button variant="outline" size="sm" onClick={handlePrint}>
+                <Printer className="mr-2 h-4 w-4" />
+                Print
               </Button>
             )}
           </CardHeader>
