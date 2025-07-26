@@ -12,9 +12,7 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const GenerateWorksheetInputSchema = z.object({
-  topic: z.string().describe('The topic of the worksheet.'),
-  gradeLevel: z.string().describe('The grade level of the students.'),
-  numberOfQuestions: z.number().describe('The number of questions to generate.'),
+  query: z.string().describe('The user\'s request for a worksheet, which could include topic, grade level, and number of questions.'),
 });
 export type GenerateWorksheetInput = z.infer<typeof GenerateWorksheetInputSchema>;
 
@@ -27,19 +25,31 @@ export async function generateWorksheet(input: GenerateWorksheetInput): Promise<
   return generateWorksheetFlow(input);
 }
 
+const worksheetTool = ai.defineTool(
+    {
+      name: 'createWorksheet',
+      description: 'Creates a worksheet based on a topic, grade level, and number of questions.',
+      inputSchema: z.object({
+        topic: z.string(),
+        gradeLevel: z.string(),
+        numberOfQuestions: z.number(),
+      }),
+      outputSchema: z.string(),
+    },
+    async ({topic, gradeLevel, numberOfQuestions}) => {
+      return `Please generate a worksheet with ${numberOfQuestions} questions about ${topic} for ${gradeLevel}.`;
+    }
+  );
+
+
 const prompt = ai.definePrompt({
   name: 'generateWorksheetPrompt',
   input: {schema: GenerateWorksheetInputSchema},
   output: {schema: GenerateWorksheetOutputSchema},
-  prompt: `You are an expert teacher specializing in creating worksheets for students.
+  tools: [worksheetTool],
+  prompt: `You are an expert teacher specializing in creating worksheets for students. Analyze the user's request to determine the topic, grade level, and number of questions. Then, use the provided tool to generate the worksheet.
 
-You will use the topic and grade level to generate a worksheet with the specified number of questions.
-
-Topic: {{{topic}}}
-Grade Level: {{{gradeLevel}}}
-Number of Questions: {{{numberOfQuestions}}}
-
-Worksheet:`,
+User Request: {{{query}}}`,
 });
 
 const generateWorksheetFlow = ai.defineFlow(
