@@ -55,16 +55,6 @@ const navItems = [
     icon: Sheet,
     label: 'Worksheet Generation',
   },
-  {
-    href: '/dashboard/qa',
-    icon: MessageCircleQuestion,
-    label: 'AI Q&A',
-  },
-  {
-    href: '/dashboard/visual-aid',
-    icon: ImageIcon,
-    label: 'Visual Aids',
-  },
 ];
 
 export default function DashboardLayout({
