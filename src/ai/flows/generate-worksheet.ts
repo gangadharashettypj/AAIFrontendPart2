@@ -12,10 +12,9 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const GenerateWorksheetInputSchema = z.object({
-  topic: z.string().describe("The user's request for a worksheet, which could include topic, grade level, and number of questions."),
-  gradeLevel: z.string().describe('The grade level of the worksheet.'),
-  fileDataUri: z.string().optional().describe(
-    "An optional file (image, audio, or PDF) as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
+  criticality: z.enum(['low', 'medium', 'high']).describe('The criticality of the worksheet (low, medium, or high).'),
+  fileDataUri: z.string().describe(
+    "A PDF file as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:application/pdf;base64,<encoded_data>'."
   ),
 });
 export type GenerateWorksheetInput = z.infer<typeof GenerateWorksheetInputSchema>;
@@ -34,17 +33,12 @@ const prompt = ai.definePrompt({
   name: 'generateWorksheetPrompt',
   input: {schema: GenerateWorksheetInputSchema},
   output: {schema: GenerateWorksheetOutputSchema},
-  prompt: `You are an expert teacher specializing in creating worksheets for students. Analyze the user's request to determine the topic, grade level, and number of questions.
+  prompt: `You are an expert teacher specializing in creating worksheets for students. Analyze the provided PDF file to determine the topic.
   
-  If a file is provided, analyze its content to determine the topic. The user's text topic might just say 'analyze file'.
+  Then, generate the worksheet content in markdown format based on the specified criticality.
 
-  Then, generate the worksheet content in markdown format.
-
-User Request: {{{topic}}}
-Grade Level: {{{gradeLevel}}}
-{{#if fileDataUri}}
+Criticality: {{{criticality}}}
 File for analysis: {{media url=fileDataUri}}
-{{/if}}
 `,
 });
 

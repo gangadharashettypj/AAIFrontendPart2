@@ -25,25 +25,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Download, FileUp, Mic, Type, Image as ImageIcon, File as FileIcon } from 'lucide-react';
+import { Loader2, Download, FileUp } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DownloadIcon } from 'lucide-react';
 
 
 const formSchema = z.object({
-  topic: z.string().optional(),
-  gradeLevel: z.string({ required_error: 'Please select a grade level.' }),
-  file: z.instanceof(File).optional(),
-  inputType: z.enum(['text', 'audio', 'image', 'pdf']).default('text'),
-}).refine(data => {
-    if (data.inputType === 'text') {
-        return !!data.topic && data.topic.trim().length > 0;
-    }
-    return !!data.file;
-}, {
-    message: 'Please provide a topic or upload a file.',
-    path: ['topic'],
+  criticality: z.string({ required_error: 'Please select a criticality level.' }),
+  file: z.instanceof(File).refine(file => file.size > 0, 'Please upload a PDF file.'),
 });
 
 export default function WorksheetGenerationPage() {
@@ -54,8 +43,6 @@ export default function WorksheetGenerationPage() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      topic: '',
-      inputType: 'text',
       file: undefined,
     },
   });
@@ -65,7 +52,7 @@ export default function WorksheetGenerationPage() {
       const { jsPDF } = jspdf;
       const doc = new jsPDF();
       doc.text(generatedWorksheet, 10, 10);
-      doc.save(`${form.getValues('topic') || 'generated-worksheet'}.pdf`);
+      doc.save('generated-worksheet.pdf');
     });
   };
 
@@ -77,24 +64,16 @@ export default function WorksheetGenerationPage() {
       reader.onerror = error => reject(error);
     });
   };
-  
-  const inputType = form.watch('inputType');
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     startTransition(async () => {
       setGeneratedWorksheet('');
 
       try {
-        let fileDataUri: string | undefined = undefined;
-        let topic = values.topic || 'Analyzing file contents...';
-
-        if (values.file) {
-          fileDataUri = await fileToBase64(values.file);
-        }
+        const fileDataUri = await fileToBase64(values.file);
 
         const result = await generateWorksheet({
-          topic: topic,
-          gradeLevel: values.gradeLevel,
+          criticality: values.criticality as 'low' | 'medium' | 'high',
           fileDataUri: fileDataUri,
         });
 
@@ -125,7 +104,7 @@ export default function WorksheetGenerationPage() {
         <Card>
           <CardHeader>
             <CardTitle>Generate Worksheet</CardTitle>
-            <CardDescription>Create a worksheet from text, voice, an image, or a PDF.</CardDescription>
+            <CardDescription>Create a worksheet from a PDF file.</CardDescription>
           </CardHeader>
           <CardContent>
             <Form {...form}>
@@ -133,100 +112,47 @@ export default function WorksheetGenerationPage() {
                 
                 <FormField
                   control={form.control}
-                  name="inputType"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Input Type</FormLabel>
-                       <Tabs
-                          defaultValue={field.value}
-                          onValueChange={(value) => {
-                            const newType = value as 'text' | 'audio' | 'image' | 'pdf';
-                            field.onChange(newType);
-                            form.setValue('file', undefined);
-                            form.setValue('topic', '');
-                            form.clearErrors('topic');
-                            form.clearErrors('file');
-                          }}
-                          className="w-full"
-                        >
-                          <TabsList className="grid w-full grid-cols-4">
-                            <TabsTrigger value="text"><Type className="h-4 w-4 mr-2"/>Text</TabsTrigger>
-                            <TabsTrigger value="audio"><Mic className="h-4 w-4 mr-2"/>Audio</TabsTrigger>
-                            <TabsTrigger value="image"><ImageIcon className="h-4 w-4 mr-2"/>Image</TabsTrigger>
-                            <TabsTrigger value="pdf"><FileIcon className="h-4 w-4 mr-2"/>PDF</TabsTrigger>
-                          </TabsList>
-                        </Tabs>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                {inputType === 'text' ? (
-                  <FormField
-                    control={form.control}
-                    name="topic"
-                    render={({ field }) => (
+                  name="file"
+                  render={({ field }) => {
+                      return (
                       <FormItem>
-                        <FormLabel>Topic & Instructions</FormLabel>
-                        <FormControl>
-                          <Textarea placeholder="e.g., Create 5 math problems for Grade 2 about addition." {...field} />
-                        </FormControl>
-                        <FormMessage />
+                          <FormLabel>Upload PDF File</FormLabel>
+                            <FormControl>
+                            <div className="relative">
+                                <FileUp className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                type="file"
+                                className="pl-10"
+                                accept="application/pdf"
+                                onChange={(e) => field.onChange(e.target.files ? e.target.files[0] : null)}
+                                />
+                            </div>
+                          </FormControl>
+                          <FormDescription>
+                              The AI will analyze the PDF to create the worksheet.
+                          </FormDescription>
+                            <FormMessage />
                       </FormItem>
-                    )}
-                  />
-                ) : (
-                  <FormField
-                    control={form.control}
-                    name="file"
-                    render={({ field }) => {
-                        return (
-                        <FormItem>
-                            <FormLabel>Upload {inputType.charAt(0).toUpperCase() + inputType.slice(1)} File</FormLabel>
-                             <FormControl>
-                               <div className="relative">
-                                  <FileUp className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                  <Input
-                                    type="file"
-                                    className="pl-10"
-                                    accept={
-                                        inputType === 'audio' ? 'audio/*' :
-                                        inputType === 'image' ? 'image/*' :
-                                        inputType === 'pdf' ? 'application/pdf' :
-                                        ''
-                                    }
-                                    onChange={(e) => field.onChange(e.target.files ? e.target.files[0] : null)}
-                                  />
-                               </div>
-                            </FormControl>
-                            <FormDescription>
-                                The AI will analyze the file to determine the topic.
-                            </FormDescription>
-                             {form.formState.errors.topic && <FormMessage>{form.formState.errors.topic.message}</FormMessage>}
-                        </FormItem>
-                        );
-                    }}
+                      );
+                  }}
                 />
-                )}
 
                 <FormField
                   control={form.control}
-                  name="gradeLevel"
+                  name="criticality"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Grade Level</FormLabel>
+                      <FormLabel>Criticality</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select a grade" />
+                            <SelectValue placeholder="Select a criticality level" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {[...Array(12)].map((_, i) => (
-                            <SelectItem key={i + 1} value={`Grade ${i + 1}`}>
-                              Grade {i + 1}
-                            </SelectItem>
-                          ))}
+                          <SelectItem value="low">Low</SelectItem>
+                          <SelectItem value="medium">Medium</SelectItem>
+                          <SelectItem value="high">High</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
