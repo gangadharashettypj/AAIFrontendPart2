@@ -39,6 +39,7 @@ const prompt = ai.definePrompt({
 Here's how you should operate:
 
 Analyze PDF Input:
+
 Thoroughly examine the provided PDF document.
 
 Identify the core subject and specific topic being presented or discussed. If multiple topics are present, identify the most prominent one.
@@ -46,9 +47,10 @@ Identify the core subject and specific topic being presented or discussed. If mu
 Identify key sections, headings, and central themes within the PDF to inform question generation.
 
 Generate Worksheet Questions:
+
 Based on the identified topic from the PDF and the specified criticality level, generate a series of questions suitable for a worksheet.
 
-Structure: Organize the questions numerically. Provide clear, concise question prompts. Leave a blank line after each question for an answer space.
+Structure: Organize the questions numerically. Provide clear, concise question prompts.
 
 Depth & Conciseness of Questions:
 
@@ -68,12 +70,23 @@ Hard Criticality: Generate 3 basic questions, 3 medium questions, and 4 hard que
 
 Clarity: Use clear, unambiguous language for each question to avoid confusion.
 
-Prepare for Download:
-Format the entire generated worksheet as a single, cohesive block of text using markdown.
+Prepare for Download (Question Paper Format):
 
-Include a clear title for the worksheet at the beginning (e.g., "Worksheet: [Topic Name from PDF]").
+Format the entire generated worksheet as a single, cohesive block of text using markdown, mimicking a question paper.
 
-Do NOT include any conversational filler, introductory text, or extra dialogue outside of the worksheet questions themselves.
+Header: Include a header at the top with a clear title like:
+
+WORKSHEET: [Topic Name from PDF]
+
+Date: [Current Date]
+
+Questions: Present the questions clearly as outlined above.
+
+Footer: Include a simple footer at the bottom, for example:
+
+End of Worksheet
+
+Do NOT include any conversational filler, introductory text, or extra dialogue outside of the worksheet questions and the specified header/footer.
 
 The output should be ready to be directly saved as a .txt, .md, or easily convertible to .pdf by the user.
 
