@@ -31,10 +31,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 
 const formSchema = z.object({
-  topic: z.string().min(1, { message: 'Please provide a topic or upload a file.' }),
+  topic: z.string().optional(),
   gradeLevel: z.string({ required_error: 'Please select a grade level.' }),
-  file: z.instanceof(File).optional(),
+  file: z.any().optional(),
   inputType: z.enum(['text', 'audio', 'image', 'pdf']).default('text'),
+}).refine(data => {
+    if (data.inputType === 'text') {
+        return !!data.topic && data.topic.length > 0;
+    }
+    return !!data.file;
+}, {
+    message: 'Please provide a topic or upload a file.',
+    path: ['topic'],
 });
 
 export default function ContentGenerationPage() {
@@ -76,24 +84,23 @@ export default function ContentGenerationPage() {
     startTransition(async () => {
       setGeneratedContent('');
 
-      if (values.inputType !== 'text' && !values.file) {
-        toast({
-          title: 'Input Missing',
-          description: `Please upload a file for the selected '${values.inputType}' input type.`,
-          variant: 'destructive',
-        });
-        return;
-      }
-
-
       try {
         let fileDataUri: string | undefined = undefined;
-        if (values.file) {
+        let topic = values.topic || 'Analyzing file contents...';
+
+        if (values.file && values.file instanceof File) {
           fileDataUri = await fileToBase64(values.file);
+        } else if (values.inputType !== 'text') {
+             toast({
+                title: 'Input Missing',
+                description: `Please upload a file for the selected '${values.inputType}' input type.`,
+                variant: 'destructive',
+            });
+            return;
         }
 
         const result = await generateEducationalContent({
-          topic: values.topic,
+          topic: topic,
           gradeLevel: values.gradeLevel,
           fileDataUri: fileDataUri,
         });
@@ -109,9 +116,10 @@ export default function ContentGenerationPage() {
         }
       } catch (error) {
         console.error(error);
+        const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred.';
         toast({
             title: 'Error',
-            description: 'An unexpected error occurred. Please try again.',
+            description: errorMessage,
             variant: 'destructive',
         });
       }
@@ -139,8 +147,12 @@ export default function ContentGenerationPage() {
                           defaultValue={field.value}
                           onValueChange={(value) => {
                             field.onChange(value);
-                            form.setValue('file', undefined);
-                            form.setValue('topic', value === 'text' ? '' : 'Analyzing file contents...');
+                            form.reset({
+                                ...form.getValues(),
+                                inputType: value as any,
+                                file: undefined,
+                                topic: '',
+                            });
                           }}
                           className="w-full"
                         >
@@ -174,7 +186,7 @@ export default function ContentGenerationPage() {
                   <FormField
                     control={form.control}
                     name="file"
-                    render={() => {
+                    render={({ field }) => {
                         return (
                         <FormItem>
                             <FormLabel>Upload {inputType.charAt(0).toUpperCase() + inputType.slice(1)} File</FormLabel>
@@ -190,7 +202,7 @@ export default function ContentGenerationPage() {
                                         inputType === 'pdf' ? 'application/pdf' :
                                         ''
                                     }
-                                    {...fileRef}
+                                    onChange={(e) => field.onChange(e.target.files ? e.target.files[0] : null)}
                                   />
                                </div>
                             </FormControl>
