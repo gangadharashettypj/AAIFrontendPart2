@@ -96,9 +96,6 @@ const generateEducationalContentFlow = ai.defineFlow(
     outputSchema: GenerateEducationalContentOutputSchema,
   },
   async input => {
-    if (!input.topic && !input.fileDataUri) {
-        throw new Error("Either a topic or a file must be provided.");
-    }
     const {output} = await prompt(input);
     return output!;
   }

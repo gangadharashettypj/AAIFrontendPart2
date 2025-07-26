@@ -33,16 +33,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 const formSchema = z.object({
   topic: z.string().optional(),
   gradeLevel: z.string({ required_error: 'Please select a grade level.' }),
-  file: z.any().optional(),
+  file: z.instanceof(File).optional(),
   inputType: z.enum(['text', 'audio', 'image', 'pdf']).default('text'),
 }).refine(data => {
     if (data.inputType === 'text') {
-        return !!data.topic && data.topic.length > 0;
+        return !!data.topic && data.topic.trim().length > 0;
     }
     return !!data.file;
 }, {
     message: 'Please provide a topic or upload a file.',
-    path: ['topic'],
+    path: ['topic'], // This will show error on topic field, we'll handle showing it on file field in the component
 });
 
 export default function ContentGenerationPage() {
@@ -55,6 +55,7 @@ export default function ContentGenerationPage() {
     defaultValues: {
       topic: '',
       inputType: 'text',
+      file: undefined,
     },
   });
 
@@ -88,15 +89,8 @@ export default function ContentGenerationPage() {
         let fileDataUri: string | undefined = undefined;
         let topic = values.topic || 'Analyzing file contents...';
 
-        if (values.file && values.file instanceof File) {
+        if (values.file) {
           fileDataUri = await fileToBase64(values.file);
-        } else if (values.inputType !== 'text') {
-             toast({
-                title: 'Input Missing',
-                description: `Please upload a file for the selected '${values.inputType}' input type.`,
-                variant: 'destructive',
-            });
-            return;
         }
 
         const result = await generateEducationalContent({
@@ -146,13 +140,12 @@ export default function ContentGenerationPage() {
                        <Tabs
                           defaultValue={field.value}
                           onValueChange={(value) => {
-                            field.onChange(value);
-                            form.reset({
-                                ...form.getValues(),
-                                inputType: value as any,
-                                file: undefined,
-                                topic: '',
-                            });
+                            const newType = value as 'text' | 'audio' | 'image' | 'pdf';
+                            field.onChange(newType);
+                            form.setValue('file', undefined);
+                            form.setValue('topic', '');
+                            form.clearErrors('topic');
+                            form.clearErrors('file');
                           }}
                           className="w-full"
                         >
