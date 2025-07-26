@@ -25,13 +25,16 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Download, FileUp } from 'lucide-react';
+import { Loader2, Download, FileUp, Mic, Type, Image as ImageIcon, File as FileIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+
 
 const formSchema = z.object({
-  topic: z.string().min(3, { message: 'Topic must be at least 3 characters.' }),
+  topic: z.string().min(1, { message: 'Please provide a topic or upload a file.' }),
   gradeLevel: z.string({ required_error: 'Please select a grade level.' }),
   file: z.instanceof(File).optional(),
+  inputType: z.enum(['text', 'audio', 'image', 'pdf']).default('text'),
 });
 
 export default function ContentGenerationPage() {
@@ -43,6 +46,7 @@ export default function ContentGenerationPage() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       topic: '',
+      inputType: 'text',
     },
   });
 
@@ -53,7 +57,7 @@ export default function ContentGenerationPage() {
       const { jsPDF } = jspdf;
       const doc = new jsPDF();
       doc.text(generatedContent, 10, 10);
-      doc.save(`${form.getValues('topic')}.pdf`);
+      doc.save(`${form.getValues('topic') || 'generated-content'}.pdf`);
     });
   };
 
@@ -65,10 +69,23 @@ export default function ContentGenerationPage() {
       reader.onerror = error => reject(error);
     });
   };
+  
+  const inputType = form.watch('inputType');
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     startTransition(async () => {
       setGeneratedContent('');
+
+      if (values.inputType !== 'text' && !values.file) {
+        toast({
+          title: 'Input Missing',
+          description: `Please upload a file for the selected '${values.inputType}' input type.`,
+          variant: 'destructive',
+        });
+        return;
+      }
+
+
       try {
         let fileDataUri: string | undefined = undefined;
         if (values.file) {
@@ -111,19 +128,83 @@ export default function ContentGenerationPage() {
           <CardContent>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                
                 <FormField
                   control={form.control}
-                  name="topic"
+                  name="inputType"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Topic</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g., The Water Cycle" {...field} />
-                      </FormControl>
+                      <FormLabel>Input Type</FormLabel>
+                       <Tabs
+                          defaultValue={field.value}
+                          onValueChange={(value) => {
+                            field.onChange(value);
+                            form.setValue('file', undefined);
+                            form.setValue('topic', value === 'text' ? '' : 'Analyzing file contents...');
+                          }}
+                          className="w-full"
+                        >
+                          <TabsList className="grid w-full grid-cols-4">
+                            <TabsTrigger value="text"><Type className="h-4 w-4 mr-2"/>Text</TabsTrigger>
+                            <TabsTrigger value="audio"><Mic className="h-4 w-4 mr-2"/>Audio</TabsTrigger>
+                            <TabsTrigger value="image"><ImageIcon className="h-4 w-4 mr-2"/>Image</TabsTrigger>
+                            <TabsTrigger value="pdf"><FileIcon className="h-4 w-4 mr-2"/>PDF</TabsTrigger>
+                          </TabsList>
+                        </Tabs>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+                
+                {inputType === 'text' ? (
+                  <FormField
+                    control={form.control}
+                    name="topic"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Topic</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g., The Water Cycle" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                ) : (
+                  <FormField
+                    control={form.control}
+                    name="file"
+                    render={() => {
+                        return (
+                        <FormItem>
+                            <FormLabel>Upload {inputType.charAt(0).toUpperCase() + inputType.slice(1)} File</FormLabel>
+                             <FormControl>
+                               <div className="relative">
+                                  <FileUp className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                  <Input
+                                    type="file"
+                                    className="pl-10"
+                                    accept={
+                                        inputType === 'audio' ? 'audio/*' :
+                                        inputType === 'image' ? 'image/*' :
+                                        inputType === 'pdf' ? 'application/pdf' :
+                                        ''
+                                    }
+                                    {...fileRef}
+                                  />
+                               </div>
+                            </FormControl>
+                            <FormDescription>
+                                The AI will analyze the file to determine the topic.
+                            </FormDescription>
+                            <FormMessage />
+                        </FormItem>
+                        );
+                    }}
+                />
+                )}
+
+
                 <FormField
                   control={form.control}
                   name="gradeLevel"
@@ -147,33 +228,6 @@ export default function ContentGenerationPage() {
                       <FormMessage />
                     </FormItem>
                   )}
-                />
-
-                <FormField
-                    control={form.control}
-                    name="file"
-                    render={({ field }) => {
-                        return (
-                        <FormItem>
-                            <FormLabel>Upload File (Optional)</FormLabel>
-                             <FormControl>
-                               <div className="relative">
-                                  <FileUp className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                  <Input
-                                    type="file"
-                                    className="pl-10"
-                                    accept="image/*,application/pdf"
-                                    {...fileRef}
-                                  />
-                               </div>
-                            </FormControl>
-                            <FormDescription>
-                                Upload an image or PDF for context.
-                            </FormDescription>
-                            <FormMessage />
-                        </FormItem>
-                        );
-                    }}
                 />
 
                 <Button type="submit" className="w-full" disabled={isPending}>
