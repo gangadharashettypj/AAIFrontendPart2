@@ -24,10 +24,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Download, FileUp, Mic, Type, Image as ImageIcon, File as FileIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 
 const formSchema = z.object({
@@ -65,8 +67,15 @@ export default function ContentGenerationPage() {
     import('jspdf').then(jspdf => {
       const { jsPDF } = jspdf;
       const doc = new jsPDF();
-      doc.text(generatedContent, 10, 10);
-      doc.save(`${form.getValues('topic') || 'generated-content'}.pdf`);
+      doc.html(document.querySelector('.markdown-body') as HTMLElement, {
+        callback: function (doc) {
+          doc.save(`${form.getValues('topic') || 'generated-content'}.pdf`);
+        },
+        x: 10,
+        y: 10,
+        width: 180,
+        windowWidth: 800,
+      });
     });
   };
 
@@ -269,11 +278,13 @@ export default function ContentGenerationPage() {
                 </div>
             )}
             {generatedContent ? (
-              <Textarea
-                readOnly
-                className="w-full h-[600px] bg-muted/50 font-mono text-sm whitespace-pre-wrap"
-                value={generatedContent}
-              />
+                <ScrollArea className="h-[600px] w-full">
+                    <ReactMarkdown 
+                        className="prose dark:prose-invert lg:prose-xl markdown-body p-4"
+                        remarkPlugins={[remarkGfm]}>
+                        {generatedContent}
+                    </ReactMarkdown>
+                </ScrollArea>
             ) : !isPending && (
               <div className="text-center text-muted-foreground p-8">
                 Your generated educational content will appear here.
