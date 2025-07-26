@@ -67,7 +67,7 @@ export default function ClassroomPage() {
   // Live Agent State
   const [status, setStatus] = useState<ConnectionStatus>("disconnected");
   const [accessToken, setAccessToken] = useState("");
-  const [projectId, setProjectId] = useState("nestbees");
+  const projectId = "nestbees";
   const [dialogMessage, setDialogMessage] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedMic, setSelectedMic] = useState<string>("");
@@ -78,11 +78,9 @@ export default function ClassroomPage() {
 
   useEffect(() => {
     setAccessToken(getCookie("token") || "");
-    setProjectId(getCookie("project") || "nestbees");
   }, []);
 
   useEffect(() => { setCookie("token", accessToken); }, [accessToken]);
-  useEffect(() => { setCookie("project", projectId); }, [projectId]);
   
   const showDialog = (message: string) => {
     setDialogMessage(message);
@@ -198,19 +196,13 @@ export default function ClassroomPage() {
         {/* Connection Controls */}
       <Card className="mb-4">
         <CardContent className="p-4 space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4">
               <Input
                 id="token"
                 type="password"
                 placeholder="Access Token"
                 value={accessToken}
                 onChange={(e) => setAccessToken(e.target.value)}
-              />
-              <Input
-                id="project"
-                placeholder="Project ID"
-                value={projectId}
-                onChange={(e) => setProjectId(e.target.value)}
               />
           </div>
           <div className='flex items-center justify-between'>
@@ -328,5 +320,3 @@ export default function ClassroomPage() {
     </>
   );
 }
-
-    
