@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Users, BookOpen, CheckSquare } from 'lucide-react';
+import { useAuth } from '@/hooks/use-auth';
 
 const stats = [
   {
@@ -29,13 +30,14 @@ const stats = [
 
 export default function DashboardPage() {
   const [isClassMode, setIsClassMode] = React.useState(false);
+  const { user } = useAuth();
 
   return (
     <div className="flex flex-col gap-8">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-3xl font-bold tracking-tight font-headline">
-            Welcome back, Jessica!
+            Welcome back, {user?.displayName || 'Jessica'}!
           </h2>
           <p className="text-muted-foreground">
             Here's a summary of your teaching activities.

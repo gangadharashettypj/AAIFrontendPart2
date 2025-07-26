@@ -13,6 +13,7 @@ import {
   School,
   Sheet,
   User,
+  Loader2,
 } from 'lucide-react';
 
 import {
@@ -29,6 +30,9 @@ import {
 } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '../ui/button';
+import { useAuth } from '@/hooks/use-auth';
+import { auth } from '@/lib/firebase';
+import { signOut } from 'firebase/auth';
 
 const navItems = [
   {
@@ -70,6 +74,30 @@ export default function DashboardLayout({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { user, loading } = useAuth();
+
+  React.useEffect(() => {
+    if (!loading && !user) {
+      router.push('/');
+    }
+  }, [user, loading, router]);
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      router.push('/');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
+
+  if (loading || !user) {
+    return (
+      <div className="flex min-h-screen w-full items-center justify-center bg-background">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <SidebarProvider>
@@ -104,14 +132,14 @@ export default function DashboardLayout({
         <SidebarFooter className="p-2 border-t">
           <div className="flex items-center gap-3">
              <Avatar>
-              <AvatarImage src="https://placehold.co/40x40.png" alt="Teacher" data-ai-hint="teacher avatar" />
-              <AvatarFallback>T</AvatarFallback>
+              <AvatarImage src={user.photoURL || "https://placehold.co/40x40.png"} alt={user.displayName || "Teacher"} data-ai-hint="teacher avatar" />
+              <AvatarFallback>{user.email?.[0].toUpperCase()}</AvatarFallback>
             </Avatar>
             <div className="flex-1 overflow-hidden">
-                <p className="font-semibold text-sm truncate">Jessica Smith</p>
-                <p className="text-xs text-muted-foreground truncate">teacher@example.com</p>
+                <p className="font-semibold text-sm truncate">{user.displayName || 'Jessica Smith'}</p>
+                <p className="text-xs text-muted-foreground truncate">{user.email}</p>
             </div>
-            <Button variant="ghost" size="icon" onClick={() => router.push('/')} aria-label="Logout">
+            <Button variant="ghost" size="icon" onClick={handleLogout} aria-label="Logout">
               <LogOut className="h-5 w-5" />
             </Button>
           </div>
