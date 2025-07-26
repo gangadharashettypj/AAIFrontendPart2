@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -85,7 +86,7 @@ topic: {{{topic}}}
 {{#if fileDataUri}}
 File: {{media url=fileDataUri}}
 {{/if}}
-class : {{{gradeLevel}}}
+grade: {{{gradeLevel}}}
 `,
 });
 
@@ -100,3 +101,5 @@ const generateEducationalContentFlow = ai.defineFlow(
     return output!;
   }
 );
+
+    

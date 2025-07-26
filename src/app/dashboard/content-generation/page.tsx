@@ -77,17 +77,21 @@ export default function ContentGenerationPage() {
       const pageHeight = doc.internal.pageSize.getHeight();
       const contentWidth = pageWidth - margin * 2;
 
-      doc.html(document.querySelector('.markdown-body') as HTMLElement, {
+      const markdownElement = document.querySelector('.markdown-body');
+      if (!markdownElement) return;
+
+      doc.html(markdownElement as HTMLElement, {
         callback: function (doc) {
           const pageCount = doc.internal.getNumberOfPages();
           for(let i = 1; i <= pageCount; i++) {
             doc.setPage(i);
+            
             // Header
             doc.setFontSize(10);
             doc.text(form.getValues('topic') || 'Generated Content', margin, 10);
             
             // Footer
-            doc.text(`Page ${i} of ${pageCount}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+            doc.text(`Page ${i} of ${pageCount}`, pageWidth / 2, pageHeight - 5, { align: 'center' });
 
             // Border
             doc.rect(margin / 2, margin / 2, pageWidth - margin, pageHeight - margin, 'S');
@@ -98,6 +102,7 @@ export default function ContentGenerationPage() {
         y: margin,
         width: contentWidth,
         windowWidth: 800,
+        margin: [15, 0, 15, 0]
       });
     });
   };
@@ -248,7 +253,7 @@ export default function ContentGenerationPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Grade Level</FormLabel>
-                      <Select onValuechange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select a grade" />
@@ -302,11 +307,11 @@ export default function ContentGenerationPage() {
             )}
             {generatedContent ? (
                 <ScrollArea className="h-[600px] w-full">
-                    <ReactMarkdown 
-                        className="prose dark:prose-invert lg:prose-xl markdown-body p-4"
-                        remarkPlugins={[remarkGfm]}>
-                        {generatedContent}
-                    </ReactMarkdown>
+                    <div className="prose dark:prose-invert lg:prose-xl markdown-body p-4">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                            {generatedContent}
+                        </ReactMarkdown>
+                    </div>
                 </ScrollArea>
             ) : !isPending && (
               <div className="text-center text-muted-foreground p-8">
@@ -319,3 +324,5 @@ export default function ContentGenerationPage() {
     </div>
   );
 }
+
+    
