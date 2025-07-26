@@ -1,48 +1,55 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Camera, Mic, Upload } from 'lucide-react';
+import { Camera, Mic, Upload, Video as VideoIcon, Newspaper } from 'lucide-react';
 import Image from 'next/image';
 
 export default function ClassroomPage() {
+  const [activeView, setActiveView] = useState<'video' | 'blackboard'>('video');
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
-      {/* Main Content: Video and Teacher Avatar */}
+      {/* Main Content: Video/Blackboard and Teacher Controls */}
       <div className="lg:col-span-2 flex flex-col gap-6">
-        <Card className="flex-1">
-          <CardHeader>
-            <CardTitle>Video Demonstration</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="aspect-video bg-muted rounded-lg flex items-center justify-center relative overflow-hidden">
-              <Image
-                src="https://placehold.co/1280x720.png"
-                alt="Video stream placeholder"
-                layout="fill"
-                objectFit="cover"
-                data-ai-hint="classroom teaching"
-              />
-              <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
-                 <p className="text-white font-semibold">Video Stream Area</p>
-              </div>
+        <Card className="flex-1 flex flex-col">
+          <CardHeader className='flex-row items-center justify-between'>
+            <CardTitle>{activeView === 'video' ? 'Live Video Feed' : 'Digital Blackboard'}</CardTitle>
+            <div className='flex gap-2'>
+              <Button variant={activeView === 'video' ? 'default' : 'outline'} size="sm" onClick={() => setActiveView('video')}>
+                <VideoIcon className="mr-2 h-4 w-4" />
+                Video
+              </Button>
+              <Button variant={activeView === 'blackboard' ? 'default' : 'outline'} size="sm" onClick={() => setActiveView('blackboard')}>
+                <Newspaper className="mr-2 h-4 w-4" />
+                Blackboard
+              </Button>
             </div>
-          </CardContent>
-        </Card>
-
-        <Card className="lg:hidden">
-          <CardHeader>
-            <CardTitle>Blackboard</CardTitle>
           </CardHeader>
-          <CardContent>
-            <Textarea
-              className="w-full h-48 resize-none"
-              placeholder="Type notes here..."
-            />
+          <CardContent className='flex-1'>
+            {activeView === 'video' ? (
+              <div className="aspect-video bg-muted rounded-lg flex items-center justify-center relative overflow-hidden h-full">
+                <Image
+                  src="https://placehold.co/1280x720.png"
+                  alt="Video stream placeholder"
+                  layout="fill"
+                  objectFit="cover"
+                  data-ai-hint="classroom teaching"
+                />
+                 <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                   <p className="text-white font-semibold">Video Stream Area</p>
+                </div>
+              </div>
+            ) : (
+              <Textarea
+                className="w-full h-full resize-none text-2xl"
+                placeholder="Write on the blackboard..."
+              />
+            )}
           </CardContent>
         </Card>
 
@@ -75,26 +82,29 @@ export default function ClassroomPage() {
         </Card>
       </div>
 
-      {/* Sidebar: Blackboard and Interaction */}
-      <div className="lg:col-span-1 flex-col gap-6 hidden lg:flex">
-        <Card className="flex-1">
+      {/* Sidebar: Chat and Interaction */}
+      <div className="lg:col-span-1 flex flex-col gap-6">
+        <Card className="flex-1 flex flex-col">
           <CardHeader>
-            <CardTitle>Blackboard</CardTitle>
+            <CardTitle>Class Chat</CardTitle>
           </CardHeader>
-          <CardContent>
-            <Textarea
-              className="w-full h-full min-h-[200px] resize-none"
-              placeholder="Type notes on the blackboard..."
-            />
+          <CardContent className="flex-1 space-y-4 overflow-y-auto">
+            {/* Chat messages would go here */}
+            <p className='text-sm text-muted-foreground'>No messages yet.</p>
+          </CardContent>
+           <CardContent className="pt-0">
+            <div className="flex gap-2">
+              <Input type="text" placeholder="Type a message..." />
+              <Button>Send</Button>
+            </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>Interaction Panel</CardTitle>
+            <CardTitle>File Sharing</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <Input type="text" placeholder="Type a message..." />
+          <CardContent>
             <Button className="w-full">
               <Upload className="mr-2 h-4 w-4" /> Upload File
             </Button>
