@@ -25,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Download, FileUp, Type, Image as ImageIcon, File as FileIcon } from 'lucide-react';
+import { Loader2, Printer, FileUp, Type, Image as ImageIcon, File as FileIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ReactMarkdown from 'react-markdown';
@@ -64,48 +64,41 @@ export default function ContentGenerationPage() {
 
   const fileRef = form.register('file');
 
-  const handleDownload = () => {
-    import('jspdf').then(jspdf => {
-      const { jsPDF } = jspdf;
-      const doc = new jsPDF({
-        orientation: 'p',
-        unit: 'mm',
-        format: 'a4'
-      });
-      const margin = 15;
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const pageHeight = doc.internal.pageSize.getHeight();
-      const contentWidth = pageWidth - margin * 2;
-
+  const handlePrint = () => {
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
       const markdownElement = document.querySelector('.markdown-body');
       if (!markdownElement) return;
 
-      doc.html(markdownElement as HTMLElement, {
-        callback: function (doc) {
-          const pageCount = doc.internal.getNumberOfPages();
-          for(let i = 1; i <= pageCount; i++) {
-            doc.setPage(i);
-            
-            // Header
-            doc.setFontSize(10);
-            doc.text(form.getValues('topic') || 'Generated Content', margin, 10);
-            
-            // Footer
-            doc.text(`Page ${i} of ${pageCount}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
-
-            // Border
-            doc.rect(margin / 2, margin / 2, pageWidth - margin, pageHeight - margin, 'S');
-          }
-          doc.save(`${form.getValues('topic') || 'generated-content'}.pdf`);
-        },
-        x: margin,
-        y: margin,
-        width: contentWidth,
-        windowWidth: 800,
-        margin: [15, 0, 15, 0]
-      });
-    });
+      const printableContent = `
+        <html>
+          <head>
+            <title>Print - ${form.getValues('topic') || 'Generated Content'}</title>
+            <style>
+                @media print {
+                    body {
+                        font-family: sans-serif;
+                        padding: 2rem;
+                    }
+                    .prose {
+                        max-width: 100%;
+                    }
+                }
+            </style>
+          </head>
+          <body>
+            ${markdownElement.outerHTML}
+          </body>
+        </html>
+      `;
+      printWindow.document.write(printableContent);
+      printWindow.document.close();
+      printWindow.focus();
+      printWindow.print();
+      printWindow.close();
+    }
   };
+
 
   const fileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -291,9 +284,9 @@ export default function ContentGenerationPage() {
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Generated Content</CardTitle>
              {generatedContent && !isPending && (
-              <Button variant="outline" size="sm" onClick={handleDownload}>
-                <Download className="mr-2 h-4 w-4" />
-                Download PDF
+              <Button variant="outline" size="sm" onClick={handlePrint}>
+                <Printer className="mr-2 h-4 w-4" />
+                Print
               </Button>
             )}
           </CardHeader>
