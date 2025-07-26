@@ -25,9 +25,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Printer, FileUp } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 
 const formSchema = z.object({
@@ -50,20 +52,31 @@ export default function WorksheetGenerationPage() {
   const handlePrint = () => {
     const printWindow = window.open('', '_blank');
     if (printWindow) {
-      printWindow.document.write(`
+      const markdownElement = document.querySelector('.markdown-worksheet');
+      if (!markdownElement) return;
+
+      const printableContent = `
         <html>
           <head>
             <title>Print Worksheet</title>
             <style>
-              body { font-family: sans-serif; padding: 2rem; }
-              pre { white-space: pre-wrap; word-wrap: break-word; }
+                @media print {
+                    body {
+                        font-family: sans-serif;
+                        padding: 2rem;
+                    }
+                    .prose {
+                        max-width: 100%;
+                    }
+                }
             </style>
           </head>
           <body>
-            <pre>${generatedWorksheet}</pre>
+            <div class="prose">${markdownElement.innerHTML}</div>
           </body>
         </html>
-      `);
+      `;
+      printWindow.document.write(printableContent);
       printWindow.document.close();
       printWindow.focus();
       printWindow.print();
@@ -209,11 +222,13 @@ export default function WorksheetGenerationPage() {
                 </div>
             )}
             {generatedWorksheet ? (
-              <Textarea
-                readOnly
-                className="w-full h-[600px] bg-muted/50 font-mono text-sm whitespace-pre-wrap"
-                value={generatedWorksheet}
-              />
+              <ScrollArea className="h-[600px] w-full">
+                <div className="prose dark:prose-invert lg:prose-xl markdown-worksheet p-4">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {generatedWorksheet}
+                  </ReactMarkdown>
+                </div>
+              </ScrollArea>
             ) : !isPending && (
               <div className="text-center text-muted-foreground p-8">
                 Your generated worksheet will appear here.
