@@ -67,19 +67,36 @@ export default function ContentGenerationPage() {
   const handleDownload = () => {
     import('jspdf').then(jspdf => {
       const { jsPDF } = jspdf;
-      const doc = new jsPDF();
+      const doc = new jsPDF({
+        orientation: 'p',
+        unit: 'mm',
+        format: 'a4'
+      });
+      const margin = 15;
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const contentWidth = pageWidth - margin * 2;
+
       doc.html(document.querySelector('.markdown-body') as HTMLElement, {
         callback: function (doc) {
           const pageCount = doc.internal.getNumberOfPages();
           for(let i = 1; i <= pageCount; i++) {
             doc.setPage(i);
-            doc.rect(5, 5, doc.internal.pageSize.width - 10, doc.internal.pageSize.height - 10, 'S');
+            // Header
+            doc.setFontSize(10);
+            doc.text(form.getValues('topic') || 'Generated Content', margin, 10);
+            
+            // Footer
+            doc.text(`Page ${i} of ${pageCount}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+
+            // Border
+            doc.rect(margin / 2, margin / 2, pageWidth - margin, pageHeight - margin, 'S');
           }
           doc.save(`${form.getValues('topic') || 'generated-content'}.pdf`);
         },
-        x: 10,
-        y: 10,
-        width: 180,
+        x: margin,
+        y: margin,
+        width: contentWidth,
         windowWidth: 800,
       });
     });
@@ -231,7 +248,7 @@ export default function ContentGenerationPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Grade Level</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValuechange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select a grade" />
