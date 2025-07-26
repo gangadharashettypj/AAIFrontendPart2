@@ -1,200 +1,277 @@
 'use client';
 
-import React, { useState, useTransition, useRef } from 'react';
+import React, { useState, useTransition } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { generateWorksheet } from '@/ai/flows/generate-worksheet';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Mic, MicOff, Send } from 'lucide-react';
+import { Loader2, Download, FileUp, Mic, Type, Image as ImageIcon, File as FileIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DownloadIcon } from 'lucide-react';
+
+
+const formSchema = z.object({
+  topic: z.string().optional(),
+  gradeLevel: z.string({ required_error: 'Please select a grade level.' }),
+  file: z.instanceof(File).optional(),
+  inputType: z.enum(['text', 'audio', 'image', 'pdf']).default('text'),
+}).refine(data => {
+    if (data.inputType === 'text') {
+        return !!data.topic && data.topic.trim().length > 0;
+    }
+    return !!data.file;
+}, {
+    message: 'Please provide a topic or upload a file.',
+    path: ['topic'],
+});
 
 export default function WorksheetGenerationPage() {
-  const [worksheet, setWorksheet] = useState('');
+  const [generatedWorksheet, setGeneratedWorksheet] = useState('');
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
-  const [isRecording, setIsRecording] = useState(false);
-  const [transcribedText, setTranscribedText] = useState('');
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const recognitionRef = useRef<any>(null); // Using `any` for SpeechRecognition
 
-  const handleToggleRecording = () => {
-    if (isRecording) {
-      // Stop recording
-      if (mediaRecorderRef.current) {
-        mediaRecorderRef.current.stop();
-      }
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-      }
-      setIsRecording(false);
-    } else {
-      // Start recording
-      navigator.mediaDevices.getUserMedia({ audio: true })
-        .then(stream => {
-          setIsRecording(true);
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      topic: '',
+      inputType: 'text',
+      file: undefined,
+    },
+  });
 
-          // Speech Recognition
-          const SpeechRecognition = window.SpeechRecognition || (window as any).webkitSpeechRecognition;
-          if (!SpeechRecognition) {
-            toast({
-              title: "Browser Not Supported",
-              description: "Speech recognition is not supported in your browser. Please try Chrome or Safari.",
-              variant: "destructive",
-            });
-            setIsRecording(false);
-            return;
-          }
-
-          const recognition = new SpeechRecognition();
-          recognition.continuous = true;
-          recognition.interimResults = true;
-          recognition.lang = 'en-US';
-          recognitionRef.current = recognition;
-
-          recognition.onresult = (event) => {
-            let interimTranscript = '';
-            let finalTranscript = '';
-            for (let i = event.resultIndex; i < event.results.length; ++i) {
-              if (event.results[i].isFinal) {
-                finalTranscript += event.results[i][0].transcript;
-              } else {
-                interimTranscript += event.results[i][0].transcript;
-              }
-            }
-            setTranscribedText(finalTranscript + interimTranscript);
-          };
-
-          recognition.onerror = (event) => {
-             toast({
-              title: "Speech Recognition Error",
-              description: event.error,
-              variant: "destructive",
-            });
-            setIsRecording(false);
-          };
-          
-          recognition.onend = () => {
-             setIsRecording(false);
-          };
-
-          recognition.start();
-
-          // Media Recorder (for visual feedback or if you wanted to store the audio)
-          const mediaRecorder = new MediaRecorder(stream);
-          mediaRecorderRef.current = mediaRecorder;
-          mediaRecorder.start();
-
-        })
-        .catch(err => {
-          console.error('Error accessing microphone:', err);
-          toast({
-            title: 'Microphone Error',
-            description: 'Could not access the microphone. Please check your permissions.',
-            variant: 'destructive',
-          });
-        });
-    }
+  const handleDownload = () => {
+    import('jspdf').then(jspdf => {
+      const { jsPDF } = jspdf;
+      const doc = new jsPDF();
+      doc.text(generatedWorksheet, 10, 10);
+      doc.save(`${form.getValues('topic') || 'generated-worksheet'}.pdf`);
+    });
   };
 
-  const handleSubmit = () => {
-    if (!transcribedText) {
-      toast({
-        title: 'No Input',
-        description: 'Please record your request first.',
-        variant: 'destructive',
-      });
-      return;
-    }
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = error => reject(error);
+    });
+  };
+  
+  const inputType = form.watch('inputType');
 
+  async function onSubmit(values: z.infer<typeof formSchema>) {
     startTransition(async () => {
-      setWorksheet('');
+      setGeneratedWorksheet('');
+
       try {
-        const result = await generateWorksheet({ query: transcribedText });
+        let fileDataUri: string | undefined = undefined;
+        let topic = values.topic || 'Analyzing file contents...';
+
+        if (values.file) {
+          fileDataUri = await fileToBase64(values.file);
+        }
+
+        const result = await generateWorksheet({
+          topic: topic,
+          gradeLevel: values.gradeLevel,
+          fileDataUri: fileDataUri,
+        });
+
         if (result.worksheet) {
-          setWorksheet(result.worksheet);
+          setGeneratedWorksheet(result.worksheet);
         } else {
-          toast({
-            title: 'Error',
-            description: 'Failed to generate worksheet. Please try again.',
-            variant: 'destructive',
-          });
+            toast({
+                title: 'Error',
+                description: 'Failed to generate worksheet. Please try again.',
+                variant: 'destructive',
+            });
         }
       } catch (error) {
         console.error(error);
+        const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred.';
         toast({
-          title: 'Error',
-          description: 'An unexpected error occurred. Please try again.',
-          variant: 'destructive',
+            title: 'Error',
+            description: errorMessage,
+            variant: 'destructive',
         });
       }
     });
-  };
+  }
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
       <div className="lg:col-span-1">
         <Card>
           <CardHeader>
-            <CardTitle>Generate Worksheet via Voice</CardTitle>
-             <CardDescription>
-              {isRecording ? "Recording... Click the button to stop." : "Click the button and speak your request."}
-            </CardDescription>
+            <CardTitle>Generate Worksheet</CardTitle>
+            <CardDescription>Create a worksheet from text, voice, an image, or a PDF.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-             <div className="flex justify-center items-center">
-                <Button 
-                    onClick={handleToggleRecording} 
-                    size="icon" 
-                    className={`h-20 w-20 rounded-full transition-all duration-300 ${isRecording ? 'bg-red-500 hover:bg-red-600 animate-pulse' : 'bg-primary hover:bg-primary/90'}`}
-                >
-                    {isRecording ? <MicOff className="h-8 w-8" /> : <Mic className="h-8 w-8" />}
-                </Button>
-            </div>
-            <div className="space-y-2">
-                 <label htmlFor="transcribed-text" className="text-sm font-medium">Your Request</label>
-                 <Textarea
-                    id="transcribed-text"
-                    placeholder="Your transcribed request will appear here... e.g., 'Create a worksheet about the solar system for grade 3 with 5 questions.'"
-                    value={transcribedText}
-                    onChange={(e) => setTranscribedText(e.target.value)}
-                    rows={5}
-                    className="bg-muted/50"
-                    disabled={isPending || isRecording}
+          <CardContent>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                
+                <FormField
+                  control={form.control}
+                  name="inputType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Input Type</FormLabel>
+                       <Tabs
+                          defaultValue={field.value}
+                          onValueChange={(value) => {
+                            const newType = value as 'text' | 'audio' | 'image' | 'pdf';
+                            field.onChange(newType);
+                            form.setValue('file', undefined);
+                            form.setValue('topic', '');
+                            form.clearErrors('topic');
+                            form.clearErrors('file');
+                          }}
+                          className="w-full"
+                        >
+                          <TabsList className="grid w-full grid-cols-4">
+                            <TabsTrigger value="text"><Type className="h-4 w-4 mr-2"/>Text</TabsTrigger>
+                            <TabsTrigger value="audio"><Mic className="h-4 w-4 mr-2"/>Audio</TabsTrigger>
+                            <TabsTrigger value="image"><ImageIcon className="h-4 w-4 mr-2"/>Image</TabsTrigger>
+                            <TabsTrigger value="pdf"><FileIcon className="h-4 w-4 mr-2"/>PDF</TabsTrigger>
+                          </TabsList>
+                        </Tabs>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-            </div>
-            <Button onClick={handleSubmit} className="w-full" disabled={isPending || isRecording}>
-              {isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                  <>
-                    <Send className="mr-2 h-4 w-4" />
-                    Generate Worksheet
-                  </>
-              )}
-            </Button>
+                
+                {inputType === 'text' ? (
+                  <FormField
+                    control={form.control}
+                    name="topic"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Topic & Instructions</FormLabel>
+                        <FormControl>
+                          <Textarea placeholder="e.g., Create 5 math problems for Grade 2 about addition." {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                ) : (
+                  <FormField
+                    control={form.control}
+                    name="file"
+                    render={({ field }) => {
+                        return (
+                        <FormItem>
+                            <FormLabel>Upload {inputType.charAt(0).toUpperCase() + inputType.slice(1)} File</FormLabel>
+                             <FormControl>
+                               <div className="relative">
+                                  <FileUp className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                  <Input
+                                    type="file"
+                                    className="pl-10"
+                                    accept={
+                                        inputType === 'audio' ? 'audio/*' :
+                                        inputType === 'image' ? 'image/*' :
+                                        inputType === 'pdf' ? 'application/pdf' :
+                                        ''
+                                    }
+                                    onChange={(e) => field.onChange(e.target.files ? e.target.files[0] : null)}
+                                  />
+                               </div>
+                            </FormControl>
+                            <FormDescription>
+                                The AI will analyze the file to determine the topic.
+                            </FormDescription>
+                             {form.formState.errors.topic && <FormMessage>{form.formState.errors.topic.message}</FormMessage>}
+                        </FormItem>
+                        );
+                    }}
+                />
+                )}
+
+                <FormField
+                  control={form.control}
+                  name="gradeLevel"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Grade Level</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a grade" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {[...Array(12)].map((_, i) => (
+                            <SelectItem key={i + 1} value={`Grade ${i + 1}`}>
+                              Grade {i + 1}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <Button type="submit" className="w-full" disabled={isPending}>
+                  {isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    'Generate Worksheet'
+                  )}
+                </Button>
+              </form>
+            </Form>
           </CardContent>
         </Card>
       </div>
 
       <div className="lg:col-span-2">
         <Card className="min-h-full">
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Generated Worksheet</CardTitle>
+             {generatedWorksheet && !isPending && (
+              <Button variant="outline" size="sm" onClick={handleDownload}>
+                <DownloadIcon className="mr-2 h-4 w-4" />
+                Download PDF
+              </Button>
+            )}
           </CardHeader>
           <CardContent>
             {isPending && (
-              <div className="flex items-center justify-center h-64">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              </div>
+                <div className="flex items-center justify-center h-64">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary"/>
+                </div>
             )}
-            {worksheet ? (
+            {generatedWorksheet ? (
               <Textarea
                 readOnly
-                className="w-full h-[500px] bg-muted/50 font-mono text-sm"
-                value={worksheet}
+                className="w-full h-[600px] bg-muted/50 font-mono text-sm whitespace-pre-wrap"
+                value={generatedWorksheet}
               />
             ) : !isPending && (
               <div className="text-center text-muted-foreground p-8">

@@ -12,12 +12,16 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const GenerateWorksheetInputSchema = z.object({
-  query: z.string().describe('The user\'s request for a worksheet, which could include topic, grade level, and number of questions.'),
+  topic: z.string().describe("The user's request for a worksheet, which could include topic, grade level, and number of questions."),
+  gradeLevel: z.string().describe('The grade level of the worksheet.'),
+  fileDataUri: z.string().optional().describe(
+    "An optional file (image, audio, or PDF) as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
+  ),
 });
 export type GenerateWorksheetInput = z.infer<typeof GenerateWorksheetInputSchema>;
 
 const GenerateWorksheetOutputSchema = z.object({
-  worksheet: z.string().describe('The generated worksheet content.'),
+  worksheet: z.string().describe('The generated worksheet content in markdown format.'),
 });
 export type GenerateWorksheetOutput = z.infer<typeof GenerateWorksheetOutputSchema>;
 
@@ -25,31 +29,23 @@ export async function generateWorksheet(input: GenerateWorksheetInput): Promise<
   return generateWorksheetFlow(input);
 }
 
-const worksheetTool = ai.defineTool(
-    {
-      name: 'createWorksheet',
-      description: 'Creates a worksheet based on a topic, grade level, and number of questions.',
-      inputSchema: z.object({
-        topic: z.string(),
-        gradeLevel: z.string(),
-        numberOfQuestions: z.number(),
-      }),
-      outputSchema: z.string(),
-    },
-    async ({topic, gradeLevel, numberOfQuestions}) => {
-      return `Please generate a worksheet with ${numberOfQuestions} questions about ${topic} for ${gradeLevel}.`;
-    }
-  );
-
 
 const prompt = ai.definePrompt({
   name: 'generateWorksheetPrompt',
   input: {schema: GenerateWorksheetInputSchema},
   output: {schema: GenerateWorksheetOutputSchema},
-  tools: [worksheetTool],
-  prompt: `You are an expert teacher specializing in creating worksheets for students. Analyze the user's request to determine the topic, grade level, and number of questions. Then, use the provided tool to generate the worksheet.
+  prompt: `You are an expert teacher specializing in creating worksheets for students. Analyze the user's request to determine the topic, grade level, and number of questions.
+  
+  If a file is provided, analyze its content to determine the topic. The user's text topic might just say 'analyze file'.
 
-User Request: {{{query}}}`,
+  Then, generate the worksheet content in markdown format.
+
+User Request: {{{topic}}}
+Grade Level: {{{gradeLevel}}}
+{{#if fileDataUri}}
+File for analysis: {{media url=fileDataUri}}
+{{/if}}
+`,
 });
 
 const generateWorksheetFlow = ai.defineFlow(
