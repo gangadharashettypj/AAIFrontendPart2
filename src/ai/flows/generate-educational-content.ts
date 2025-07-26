@@ -16,7 +16,7 @@ const GenerateEducationalContentInputSchema = z.object({
   topic: z.string().describe('The topic of the lesson plan. Could be "Analyzing file contents..." if a file is provided.'),
   gradeLevel: z.string().describe('The grade level of the lesson plan.'),
   fileDataUri: z.string().optional().describe(
-    "An optional file (image, audio, or PDF) as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
+    "An optional file (image, or PDF) as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
   ),
 });
 export type GenerateEducationalContentInput = z.infer<typeof GenerateEducationalContentInputSchema>;
@@ -101,5 +101,3 @@ const generateEducationalContentFlow = ai.defineFlow(
     return output!;
   }
 );
-
-    

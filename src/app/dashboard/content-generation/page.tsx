@@ -25,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Download, FileUp, Mic, Type, Image as ImageIcon, File as FileIcon } from 'lucide-react';
+import { Loader2, Download, FileUp, Type, Image as ImageIcon, File as FileIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ReactMarkdown from 'react-markdown';
@@ -37,7 +37,7 @@ const formSchema = z.object({
   topic: z.string().optional(),
   gradeLevel: z.string({ required_error: 'Please select a grade level.' }),
   file: z.instanceof(File).optional(),
-  inputType: z.enum(['text', 'audio', 'image', 'pdf']).default('text'),
+  inputType: z.enum(['text', 'image', 'pdf']).default('text'),
 }).refine(data => {
     if (data.inputType === 'text') {
         return !!data.topic && data.topic.trim().length > 0;
@@ -91,7 +91,7 @@ export default function ContentGenerationPage() {
             doc.text(form.getValues('topic') || 'Generated Content', margin, 10);
             
             // Footer
-            doc.text(`Page ${i} of ${pageCount}`, pageWidth / 2, pageHeight - 5, { align: 'center' });
+            doc.text(`Page ${i} of ${pageCount}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
 
             // Border
             doc.rect(margin / 2, margin / 2, pageWidth - margin, pageHeight - margin, 'S');
@@ -177,7 +177,7 @@ export default function ContentGenerationPage() {
                        <Tabs
                           defaultValue={field.value}
                           onValueChange={(value) => {
-                            const newType = value as 'text' | 'audio' | 'image' | 'pdf';
+                            const newType = value as 'text' | 'image' | 'pdf';
                             field.onChange(newType);
                             form.setValue('file', undefined);
                             form.setValue('topic', '');
@@ -186,9 +186,8 @@ export default function ContentGenerationPage() {
                           }}
                           className="w-full"
                         >
-                          <TabsList className="grid w-full grid-cols-4">
+                          <TabsList className="grid w-full grid-cols-3">
                             <TabsTrigger value="text"><Type className="h-4 w-4 mr-2"/>Text</TabsTrigger>
-                            <TabsTrigger value="audio"><Mic className="h-4 w-4 mr-2"/>Audio</TabsTrigger>
                             <TabsTrigger value="image"><ImageIcon className="h-4 w-4 mr-2"/>Image</TabsTrigger>
                             <TabsTrigger value="pdf"><FileIcon className="h-4 w-4 mr-2"/>PDF</TabsTrigger>
                           </TabsList>
@@ -227,7 +226,6 @@ export default function ContentGenerationPage() {
                                     type="file"
                                     className="pl-10"
                                     accept={
-                                        inputType === 'audio' ? 'audio/*' :
                                         inputType === 'image' ? 'image/*' :
                                         inputType === 'pdf' ? 'application/pdf' :
                                         ''
@@ -324,5 +322,3 @@ export default function ContentGenerationPage() {
     </div>
   );
 }
-
-    
