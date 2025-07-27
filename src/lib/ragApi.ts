@@ -1,17 +1,11 @@
 import axios from "axios";
 
-interface ApiResponse {
-  success: boolean;
-  message?: string;
-}
-
-async function postData(inputText: string): Promise<ApiResponse | null> {
-  const url =
-    "https://idx-aai-server-15683884-819439158385.asia-south1.run.app/ask_ai";
+async function postData(inputText: string): Promise<any | null> {
+  const url = "http://127.0.0.1:5000/ask_ai";
   const payload = { question: inputText };
 
   try {
-    const response = await axios.post<ApiResponse>(url, payload);
+    const response = await axios.post<any>(url, payload);
     // Access response data
     return response.data;
   } catch (error) {

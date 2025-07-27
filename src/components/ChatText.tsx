@@ -33,7 +33,7 @@ const ChalkText: React.FC<ChalkTextProps> = ({ text }) => {
           transform: "translate(-50%,-50%)",
           width: "90%",
           fontFamily: "Chalk",
-          fontSize: 56,
+          fontSize: 26,
           color: "#fff",
           textAlign: "center",
           userSelect: "none",

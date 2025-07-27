@@ -4,6 +4,10 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+
+import { useAgentManager } from "@/hooks/useAgentManager";
+import { ChatMode, ConnectionState, Message } from "@d-id/client-sdk";
+
 import {
   Mic,
   MicOff,
@@ -72,13 +76,58 @@ export default function DiscussionPage() {
   const [dialogMessage, setDialogMessage] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedMic, setSelectedMic] = useState<string>("");
-  const [messages, setMessages] = useState<string>("");
+  const [resMessages, setMessages] = useState<string>("");
 
   const geminiApiRef = useRef<GeminiLiveAPI | null>(null);
   const audioInManagerRef = useRef<LiveAudioInputManager | null>(null);
   const audioOutManagerRef = useRef<LiveAudioOutputManager | null>(null);
+
+  const [text, setText] = useState("Hello");
+  const [mode, setMode] = useState<ChatMode>(ChatMode.Functional);
+
   const videoRef = useRef<HTMLVideoElement>(null);
-  const videoRef2 = useRef<HTMLVideoElement>(null);
+
+  const didApiUrl = "https://api.d-id.com";
+  const didSocketApiUrl = "wss://notifications.d-id.com";
+  const agentId = "v2_agt_KCm-2Vmm";
+  const clientKey =
+    "Z29vZ2xlLW9hdXRoMnwxMDE2MDE2MTMzODUzNTI2NTA4OTk6aFFTek04Y3FscHFWLUNTMkwwblhp";
+
+  const {
+    srcObject,
+    connectionState,
+    messages,
+    isSpeaking,
+    connect,
+    disconnect,
+    speak,
+    chat,
+  } = useAgentManager({
+    agentId,
+    baseURL: didApiUrl,
+    wsURL: didSocketApiUrl,
+    mode,
+    enableAnalytics: false,
+    auth: { type: "key", clientKey },
+    streamOptions: {},
+  });
+
+  async function onClick() {
+    if (
+      connectionState === ConnectionState.New ||
+      connectionState === ConnectionState.Fail
+    ) {
+      await connect();
+    } else if (connectionState === ConnectionState.Connected && text) {
+      await speak(text);
+    }
+  }
+
+  useEffect(() => {
+    if (srcObject && videoRef.current) {
+      videoRef.current.srcObject = srcObject;
+    }
+  }, [srcObject]);
 
   useEffect(() => {
     setAccessToken(getCookie("token") || "");
@@ -118,23 +167,27 @@ export default function DiscussionPage() {
   }, [getDevices]);
 
   useEffect(() => {
-    const interval = setTimeout(() => {
-      if (messages === "") {
+    const interval = setTimeout(async () => {
+      if (resMessages === "") {
         return;
       }
-      console.log(messages);
-      postData(messages).then((res) => {
-        if (res) {
-          console.log("API Response:", res);
-        } else {
-          console.log("Failed to get a valid response");
-        }
-      });
+      console.log(resMessages);
+      setBlackboardText(resMessages);
+      await speak(resMessages);
+      // postData(resMessages).then((resp) => {
+      //   if (resp) {
+      //     console.log("API Response:", resp);
+      //     setBlackboardText(resp.report.prompt);
+      //     speak(resp.report.script);
+      //   } else {
+      //     console.log("Failed to get a valid response");
+      //   }
+      // });
       setMessages("");
-    }, 2000);
+    }, 500);
 
     return () => clearInterval(interval);
-  }, [messages]);
+  }, [resMessages]);
 
   const handleConnect = () => {
     setStatus("connecting");
@@ -152,6 +205,7 @@ export default function DiscussionPage() {
     );
     geminiApiRef.current = api;
     api.responseModalities = ["TEXT"];
+
     api.systemInstructions =
       "You are a helpful teaching assistant in a classroom.";
 
@@ -305,7 +359,73 @@ export default function DiscussionPage() {
           </Card>
           <Card className="flex-1 flex items-center justify-center">
             <CardContent className="w-full h-full p-4">
-              <AvatarView />
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                }}
+              >
+                <Card className="mb-4">
+                  <CardContent className="p-4 space-y-4 flex gap-4">
+                    <textarea
+                      // type="text"
+                      placeholder="Enter text to stream"
+                      value={text}
+                      onInput={(e) => setText(e.currentTarget.value)}
+                    />
+
+                    <fieldset
+                      id="main-input"
+                      disabled={connectionState === ConnectionState.Connecting}
+                    >
+                      <Button
+                        onClick={onClick}
+                        disabled={
+                          isSpeaking ||
+                          (!text &&
+                            ![
+                              ConnectionState.New,
+                              ConnectionState.Fail,
+                            ].includes(connectionState))
+                        }
+                      >
+                        {connectionState === ConnectionState.Connected
+                          ? "Send"
+                          : connectionState === ConnectionState.Connecting
+                          ? "Connecting..."
+                          : connectionState === ConnectionState.Fail
+                          ? "Failed, Try Again"
+                          : "Connect"}
+                      </Button>
+
+                      <Button
+                        variant="outline"
+                        onClick={disconnect}
+                        disabled={connectionState !== ConnectionState.Connected}
+                      >
+                        Close Connection
+                      </Button>
+                    </fieldset>
+                  </CardContent>
+                </Card>
+                <main className="flex-1 flex flex-col gap-4">
+                  <div className="flex-1 relative rounded-lg overflow-hidden bg-muted flex items-center justify-center">
+                    <div id="app">
+                      <video
+                        ref={videoRef}
+                        id="main-video"
+                        autoPlay
+                        playsInline
+                        className={
+                          connectionState === ConnectionState.Connecting
+                            ? "animated"
+                            : ""
+                        }
+                      />
+                    </div>
+                  </div>
+                </main>
+              </div>
             </CardContent>
           </Card>
         </div>
