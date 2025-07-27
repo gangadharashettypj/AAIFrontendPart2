@@ -22,7 +22,8 @@ import {
   Hourglass,
   CloudDownload,
   Bot,
-  X
+  X,
+  VideoOff
 } from 'lucide-react';
 import Image from 'next/image';
 import {
@@ -39,6 +40,7 @@ import {
 } from "@/lib/live-media-manager";
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
+import ChalkText from '@/components/ChatText';
 
 type ConnectionStatus = "disconnected" | "connecting" | "connected" | "speaking";
 
@@ -63,6 +65,8 @@ export default function ClassroomPage() {
   const [activeView, setActiveView] = useState<'video' | 'blackboard'>('video');
   const [micOn, setMicOn] = useState(false);
   const [cameraOn, setCameraOn] = useState(true);
+  const [chalkText, setChalkText] = useState('Welcome to the class!');
+
 
   // Live Agent State
   const [status, setStatus] = useState<ConnectionStatus>("disconnected");
@@ -222,27 +226,35 @@ export default function ClassroomPage() {
         <div className="flex-1 relative rounded-lg overflow-hidden bg-muted flex items-center justify-center">
            {activeView === 'video' ? (
               <div className="w-full h-full relative">
-                <Image
-                  src="https://placehold.co/1280x720.png"
-                  alt="Video stream placeholder"
-                  layout="fill"
-                  objectFit="cover"
-                  data-ai-hint="classroom teaching"
-                />
-                <div className="absolute bottom-4 left-4">
-                    <div className="bg-background/80 backdrop-blur-sm p-2 rounded-lg flex items-center gap-2">
-                        <Avatar className="h-8 w-8">
-                            <AvatarImage src="https://placehold.co/64x64.png" alt="Teacher" data-ai-hint="teacher avatar" />
-                            <AvatarFallback>T</AvatarFallback>
-                        </Avatar>
-                        <span className="font-semibold text-sm">Mrs. Jessica Smith</span>
+                {cameraOn ? (
+                    <>
+                    <Image
+                        src="https://placehold.co/1280x720.png"
+                        alt="Video stream placeholder"
+                        layout="fill"
+                        objectFit="cover"
+                        data-ai-hint="classroom teaching"
+                    />
+                    <div className="absolute bottom-4 left-4">
+                        <div className="bg-background/80 backdrop-blur-sm p-2 rounded-lg flex items-center gap-2">
+                            <Avatar className="h-8 w-8">
+                                <AvatarImage src="https://placehold.co/64x64.png" alt="Teacher" data-ai-hint="teacher avatar" />
+                                <AvatarFallback>T</AvatarFallback>
+                            </Avatar>
+                            <span className="font-semibold text-sm">Mrs. Jessica Smith</span>
+                        </div>
                     </div>
-                </div>
+                    </>
+                ) : (
+                    <ChalkText text={chalkText} />
+                )}
               </div>
             ) : (
               <Textarea
                 className="w-full h-full resize-none text-2xl bg-white dark:bg-gray-800 border-0"
                 placeholder="Digital blackboard..."
+                value={chalkText}
+                onChange={(e) => setChalkText(e.target.value)}
               />
             )}
         </div>
@@ -280,7 +292,7 @@ export default function ClassroomPage() {
                 className="rounded-full h-12 w-12" 
                 onClick={() => setCameraOn(prev => !prev)}
                 >
-                <VideoIcon className="h-6 w-6" />
+                {cameraOn ? <VideoIcon className="h-6 w-6" /> : <VideoOff className="h-6 w-6" />}
               </Button>
                <Button variant="destructive" size="icon" className="rounded-full h-12 w-12">
                 <Phone className="h-6 w-6" />
