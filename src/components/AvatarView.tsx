@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
@@ -9,52 +10,140 @@ import { AgentManager, createAgentManager } from "@d-id/client-sdk";
 type DIDAgentManager = AgentManager | undefined;
 
 const AvatarView = () => {
-  const [agentManager, setAgentManager] = useState<AgentManager | undefined>(
-    undefined
-  );
+  const [agentManager, setAgentManager] = useState<DIDAgentManager>(undefined);
   const [connection, setConnection] = useState<string>("Connecting..");
+  const [messages, setMessages] = useState<any[]>([]);
+  const [agentName, setAgentName] = useState('Your Agent');
 
+  const streamVideoElementRef = useRef<HTMLVideoElement>(null);
+  const idleVideoElementRef = useRef<HTMLVideoElement>(null);
+  const videoWrapperRef = useRef<HTMLDivElement>(null);
+  const textAreaRef = useRef<HTMLTextAreaElement>(null);
+  const actionButtonRef = useRef<HTMLButtonElement>(null);
+  const speechButtonRef = useRef<HTMLButtonElement>(null);
+  const answersRef = useRef<HTMLDetailsElement>(null);
+  
   useEffect(() => {
     async function init() {
-      const newAgentManager = await createAgentManager("v2_agt_KCm-2Vmm", {
-        auth: {
-          type: "key",
-          clientKey: process.env.NEXT_PUBLIC_D_ID_API_KEY!!,
-        },
-        avatars: {
-          initial: {
-            // Did lite model avatar
-            model: "avt_flc1bEAnbT",
-            voice: "en-US-JennyNeural",
-          },
-        },
-        callbacks: {
-          onConnectionStateChange: (state) => setConnection(state),
-        },
-      });
-      setAgentManager(newAgentManager);
+      try {
+        const newAgentManager = await createAgentManager("v2_agt_KCm-2Vmm", {
+            auth: {
+              type: "key",
+              clientKey: process.env.NEXT_PUBLIC_D_ID_API_KEY!!,
+            },
+            avatars: {
+              initial: {
+                // Did lite model avatar
+                model: "avt_flc1bEAnbT",
+                voice: "en-US-JennyNeural",
+              },
+            },
+            callbacks: {
+              onConnectionStateChange: (state) => {
+                setConnection(state)
+
+                if (state === 'connecting') {
+                    if(newAgentManager.agent.preview_name) {
+                        setAgentName(newAgentManager.agent.preview_name);
+                    }
+                    if(idleVideoElementRef.current && newAgentManager.agent.presenter.idle_video) {
+                        idleVideoElementRef.current.src = newAgentManager.agent.presenter.idle_video;
+                        idleVideoElementRef.current.play();
+                    }
+                    if(videoWrapperRef.current) {
+                        videoWrapperRef.current.style.filter = "blur(5px)";
+                        videoWrapperRef.current.style.backgroundImage = `url(${newAgentManager.agent.presenter.thumbnail})`;
+                    }
+                    if(streamVideoElementRef.current) streamVideoElementRef.current.style.opacity = '0';
+                    if(idleVideoElementRef.current) idleVideoElementRef.current.style.opacity = '1';
+                }
+                
+                if (state === 'connected') {
+                    if(actionButtonRef.current) actionButtonRef.current.removeAttribute("disabled");
+                    if(speechButtonRef.current) speechButtonRef.current.removeAttribute("disabled");
+                    setMessages(prev => [...prev, {role: 'assistant', content: newAgentManager.agent.greetings[0]}]);
+                    if(videoWrapperRef.current) videoWrapperRef.current.style.filter = "blur(0px)";
+                }
+
+                if (state === 'disconnected' || state === 'closed') {
+                     if(actionButtonRef.current) actionButtonRef.current.setAttribute("disabled", 'true');
+                    if(speechButtonRef.current) speechButtonRef.current.setAttribute("disabled", 'true');
+                    if(videoWrapperRef.current) videoWrapperRef.current.style.filter = "blur(5px)";
+                }
+              },
+              onVideoStateChange(state) {
+                 if (state === "START") {
+                    if(streamVideoElementRef.current) {
+                        streamVideoElementRef.current.style.opacity = '1';
+                        streamVideoElementRef.current.muted = false;
+                    }
+                    if(idleVideoElementRef.current) idleVideoElementRef.current.style.opacity = '0';
+                    if(videoWrapperRef.current) videoWrapperRef.current.style.filter = "blur(0px)";
+                  } else {
+                     if(streamVideoElementRef.current) {
+                        streamVideoElementRef.current.style.opacity = '0';
+                        streamVideoElementRef.current.muted = true;
+                    }
+                    if(idleVideoElementRef.current) idleVideoElementRef.current.style.opacity = '1';
+                  }
+              },
+              onNewMessage(messages, type) {
+                  let lastIndex = messages.length - 1;
+                  let msg = messages[lastIndex];
+
+                  setMessages(prev => [...prev, msg])
+              },
+              onError(error, errorData) {
+                  setConnection('Error');
+                  console.error("Error:", error, "Error Data:", errorData);
+              },
+            },
+          });
+          setAgentManager(newAgentManager);
+      } catch (error) {
+        console.error("Failed to create agent manager", error);
+        setConnection('Error');
+      }
     }
     init();
+
+    return () => {
+        if(agentManager) {
+            agentManager.disconnect();
+            setAgentManager(undefined);
+        }
+    }
   }, []);
+
+  useEffect(() => {
+    if (answersRef.current) {
+        answersRef.current.scrollTo({
+            top: answersRef.current.scrollHeight,
+            behavior: 'smooth'
+        })
+    }
+  }, [messages])
 
   return (
     <div id="container">
       <div className="header">
-        <span id="previewName">Your Agent</span>
+        <span id="previewName">{agentName}</span>
         <span id="connectionLabel">{connection}</span>
       </div>
-      <div id="video-wrapper">
+      <div id="video-wrapper" ref={videoWrapperRef}>
         <video
           id="streamVideoElement"
+          ref={streamVideoElementRef}
           autoPlay
-          loop
-          style={{ opacity: 1 }}
+          playsInline
+          style={{ opacity: 0 }}
         ></video>
         <video
           id="idleVideoElement"
+          ref={idleVideoElementRef}
           autoPlay
           loop
-          style={{ opacity: 0 }}
+          style={{ opacity: 1 }}
         ></video>
       </div>
 
@@ -86,18 +175,26 @@ const AvatarView = () => {
         <div className="mainInput">
           <Textarea
             id="textArea"
+            ref={textAreaRef}
             placeholder="Write something — ‘Chat’ replies, ‘Speak’ repeats."
             autoFocus
           />
           <button
             className="roundButton"
             id="speechButton"
+            ref={speechButtonRef}
             title="Speech to Text - Web Speech API (MDN)"
           ></button>
           <Button
             id="actionButton"
+            ref={actionButtonRef}
             className="roundButton"
             title="Send Message"
+            onClick={() => {
+                if(agentManager && textAreaRef.current?.value) {
+                    agentManager.chat(textAreaRef.current.value)
+                }
+            }}
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -114,7 +211,7 @@ const AvatarView = () => {
           </Button>
         </div>
       </div>
-      <details id="answers">
+      <details id="answers" ref={answersRef} open>
         <summary>
           {" "}
           Chat History{" "}
@@ -137,9 +234,18 @@ const AvatarView = () => {
             />
           </svg>
         </summary>
+         <div className="p-2 space-y-2">
+            {messages.map((msg, index) => (
+                <div key={index} className={msg.role === 'assistant' ? 'agentMessage' : 'userMessage'}>
+                    {msg.content}
+                </div>
+            ))}
+        </div>
       </details>
     </div>
   );
 };
 
 export default AvatarView;
+
+    
