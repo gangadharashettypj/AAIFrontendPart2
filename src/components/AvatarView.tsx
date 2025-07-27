@@ -1,251 +1,210 @@
+import { useAgentManager } from "@/hooks/useAgentManager";
+import { ChatMode, ConnectionState, Message } from "@d-id/client-sdk";
 
-"use client";
-
-import React, { useEffect, useRef, useState } from "react";
-import { Button } from "./ui/button";
-import { Textarea } from "./ui/textarea";
-import "./AvatarView.css";
-import { AgentManager, createAgentManager } from "@d-id/client-sdk";
-
-type DIDAgentManager = AgentManager | undefined;
+import { useEffect, useRef, useState } from "react";
 
 const AvatarView = () => {
-  const [agentManager, setAgentManager] = useState<DIDAgentManager>(undefined);
-  const [connection, setConnection] = useState<string>("Connecting..");
-  const [messages, setMessages] = useState<any[]>([]);
-  const [agentName, setAgentName] = useState('Your Agent');
+  const [warmup, setWarmup] = useState(true);
+  const [text, setText] = useState(
+    "Ben bobobobo sagi mamamama . bla raga ode ovem. lol cha cha cha cha cha . bobobobo. cha cha cha cha. bobobobo cha cha cha cha bobobobo. ssssssss cha cha cha cha cha bobobobo . cha cha cha cha bobobobo . cha cha cha cha. bobobobo ssssssss"
+  );
+  const [mode, setMode] = useState<ChatMode>(ChatMode.Functional);
+  const [sessionTimeout, setSessionTimeout] = useState<number | undefined>();
+  const [compatibilityMode, setCompatibilityMode] = useState<
+    "on" | "off" | "auto"
+  >();
+  const [fluent, setFluent] = useState(false);
 
-  const streamVideoElementRef = useRef<HTMLVideoElement>(null);
-  const idleVideoElementRef = useRef<HTMLVideoElement>(null);
-  const videoWrapperRef = useRef<HTMLDivElement>(null);
-  const textAreaRef = useRef<HTMLTextAreaElement>(null);
-  const actionButtonRef = useRef<HTMLButtonElement>(null);
-  const speechButtonRef = useRef<HTMLButtonElement>(null);
-  const answersRef = useRef<HTMLDetailsElement>(null);
-  
-  useEffect(() => {
-    async function init() {
-      try {
-        const newAgentManager = await createAgentManager("v2_agt_KCm-2Vmm", {
-            auth: {
-              type: "key",
-              clientKey: process.env.NEXT_PUBLIC_D_ID_API_KEY!!,
-            },
-            avatars: {
-              initial: {
-                // Did lite model avatar
-                model: "avt_flc1bEAnbT",
-                voice: "en-US-JennyNeural",
-              },
-            },
-            callbacks: {
-              onConnectionStateChange: (state) => {
-                setConnection(state)
+  const videoRef = useRef<HTMLVideoElement>(null);
 
-                if (state === 'connecting') {
-                    if(newAgentManager.agent.preview_name) {
-                        setAgentName(newAgentManager.agent.preview_name);
-                    }
-                    if(idleVideoElementRef.current && newAgentManager.agent.presenter.idle_video) {
-                        idleVideoElementRef.current.src = newAgentManager.agent.presenter.idle_video;
-                        idleVideoElementRef.current.play();
-                    }
-                    if(videoWrapperRef.current) {
-                        videoWrapperRef.current.style.filter = "blur(5px)";
-                        videoWrapperRef.current.style.backgroundImage = `url(${newAgentManager.agent.presenter.thumbnail})`;
-                    }
-                    if(streamVideoElementRef.current) streamVideoElementRef.current.style.opacity = '0';
-                    if(idleVideoElementRef.current) idleVideoElementRef.current.style.opacity = '1';
-                }
-                
-                if (state === 'connected') {
-                    if(actionButtonRef.current) actionButtonRef.current.removeAttribute("disabled");
-                    if(speechButtonRef.current) speechButtonRef.current.removeAttribute("disabled");
-                    setMessages(prev => [...prev, {role: 'assistant', content: newAgentManager.agent.greetings[0]}]);
-                    if(videoWrapperRef.current) videoWrapperRef.current.style.filter = "blur(0px)";
-                }
+  const nodeEnv = "prod";
+  const didApiUrl = "https://api.d-id.com";
+  const didSocketApiUrl = "wss://notifications.d-id.com";
+  const agentId = "v2_agt_KCm-2Vmm";
+  const clientKey =
+    "Z29vZ2xlLW9hdXRoMnwxMDE2MDE2MTMzODUzNTI2NTA4OTk6aFFTek04Y3FscHFWLUNTMkwwblhp";
 
-                if (state === 'disconnected' || state === 'closed') {
-                     if(actionButtonRef.current) actionButtonRef.current.setAttribute("disabled", 'true');
-                    if(speechButtonRef.current) speechButtonRef.current.setAttribute("disabled", 'true');
-                    if(videoWrapperRef.current) videoWrapperRef.current.style.filter = "blur(5px)";
-                }
-              },
-              onVideoStateChange(state) {
-                 if (state === "START") {
-                    if(streamVideoElementRef.current) {
-                        streamVideoElementRef.current.style.opacity = '1';
-                        streamVideoElementRef.current.muted = false;
-                    }
-                    if(idleVideoElementRef.current) idleVideoElementRef.current.style.opacity = '0';
-                    if(videoWrapperRef.current) videoWrapperRef.current.style.filter = "blur(0px)";
-                  } else {
-                     if(streamVideoElementRef.current) {
-                        streamVideoElementRef.current.style.opacity = '0';
-                        streamVideoElementRef.current.muted = true;
-                    }
-                    if(idleVideoElementRef.current) idleVideoElementRef.current.style.opacity = '1';
-                  }
-              },
-              onNewMessage(messages, type) {
-                  let lastIndex = messages.length - 1;
-                  let msg = messages[lastIndex];
+  const {
+    srcObject,
+    connectionState,
+    messages,
+    isSpeaking,
+    connect,
+    disconnect,
+    speak,
+    chat,
+    interrupt,
+  } = useAgentManager({
+    agentId,
+    baseURL: didApiUrl,
+    wsURL: didSocketApiUrl,
+    mode,
+    enableAnalytics: false,
+    auth: { type: "key", clientKey },
+    streamOptions: {
+      streamWarmup: warmup,
+      sessionTimeout,
+      compatibilityMode,
+      fluent,
+    },
+  });
 
-                  setMessages(prev => [...prev, msg])
-              },
-              onError(error, errorData) {
-                  setConnection('Error');
-                  console.error("Error:", error, "Error Data:", errorData);
-              },
-            },
-          });
-          setAgentManager(newAgentManager);
-      } catch (error) {
-        console.error("Failed to create agent manager", error);
-        setConnection('Error');
-      }
+  async function onClick() {
+    if (
+      connectionState === ConnectionState.New ||
+      connectionState === ConnectionState.Fail
+    ) {
+      await connect();
+    } else if (connectionState === ConnectionState.Connected && text) {
+      await speak(text);
     }
-    init();
-
-    return () => {
-        if(agentManager) {
-            agentManager.disconnect();
-            setAgentManager(undefined);
-        }
-    }
-  }, []);
+  }
 
   useEffect(() => {
-    if (answersRef.current) {
-        answersRef.current.scrollTo({
-            top: answersRef.current.scrollHeight,
-            behavior: 'smooth'
-        })
+    if (srcObject && videoRef.current) {
+      videoRef.current.srcObject = srcObject;
     }
-  }, [messages])
+  }, [srcObject]);
 
   return (
-    <div id="container">
-      <div className="header">
-        <span id="previewName">{agentName}</span>
-        <span id="connectionLabel">{connection}</span>
-      </div>
-      <div id="video-wrapper" ref={videoWrapperRef}>
+    <div id="app">
+      <section>
+        <div id="left">
+          <textarea
+            // type="text"
+            placeholder="Enter text to stream"
+            value={text}
+            onInput={(e) => setText(e.currentTarget.value)}
+          />
+        </div>
+
+        <div id="right">
+          <fieldset
+            id="main-input"
+            disabled={connectionState === ConnectionState.Connecting}
+          >
+            <button
+              onClick={onClick}
+              disabled={
+                isSpeaking ||
+                (!text &&
+                  ![ConnectionState.New, ConnectionState.Fail].includes(
+                    connectionState
+                  ))
+              }
+            >
+              {connectionState === ConnectionState.Connected
+                ? "Send"
+                : connectionState === ConnectionState.Connecting
+                ? "Connecting..."
+                : connectionState === ConnectionState.Fail
+                ? "Failed, Try Again"
+                : "Connect"}
+            </button>
+
+            <button
+              onClick={() => chat(text)}
+              disabled={
+                isSpeaking || connectionState !== ConnectionState.Connected
+              }
+            >
+              Send to Chat
+            </button>
+
+            <button
+              onClick={interrupt}
+              disabled={
+                connectionState !== ConnectionState.Connected || !fluent
+              }
+            >
+              Interrupt
+            </button>
+
+            <button
+              onClick={disconnect}
+              disabled={connectionState !== ConnectionState.Connected}
+            >
+              Close Connection
+            </button>
+
+            <div className="input-options">
+              <label>
+                <input
+                  type="checkbox"
+                  name="warmup"
+                  checked={warmup}
+                  onChange={(e) => setWarmup(e.currentTarget.checked)}
+                />
+                Warmup
+              </label>
+
+              <label>
+                <input
+                  type="checkbox"
+                  name="fluent"
+                  checked={fluent}
+                  onChange={(e) => setFluent(e.currentTarget.checked)}
+                />
+                Fluent
+              </label>
+            </div>
+          </fieldset>
+        </div>
+      </section>
+      <footer>
         <video
-          id="streamVideoElement"
-          ref={streamVideoElementRef}
+          ref={videoRef}
+          id="main-video"
           autoPlay
           playsInline
-          style={{ opacity: 0 }}
-        ></video>
-        <video
-          id="idleVideoElement"
-          ref={idleVideoElementRef}
-          autoPlay
-          loop
-          style={{ opacity: 1 }}
-        ></video>
-      </div>
-
-      <div id="buttons">
-        <input
-          type="radio"
-          id="chatOption"
-          name="option"
-          value="chat"
-          defaultChecked
+          className={
+            connectionState === ConnectionState.Connecting ? "animated" : ""
+          }
         />
-        <label
-          htmlFor="chatOption"
-          className="button"
-          title="agentManager.chat() -> Communicate with your Agent (D-ID LLM)"
-        >
-          Chat
-        </label>
-        <input type="radio" id="speakOption" name="option" value="speak" />
-        <label
-          htmlFor="speakOption"
-          className="button"
-          title="agentManager.speak() -> Streaming API (Bring your own LLM)"
-        >
-          Speak
-        </label>
-      </div>
-      <div className="inputsDiv">
-        <div className="mainInput">
-          <Textarea
-            id="textArea"
-            ref={textAreaRef}
-            placeholder="Write something — ‘Chat’ replies, ‘Speak’ repeats."
-            autoFocus
+        <div id="options">
+          <input
+            type="text"
+            placeholder="Session Timeout"
+            value={sessionTimeout}
+            onChange={(e) =>
+              setSessionTimeout(parseInt(e.currentTarget.value) || undefined)
+            }
           />
-          <button
-            className="roundButton"
-            id="speechButton"
-            ref={speechButtonRef}
-            title="Speech to Text - Web Speech API (MDN)"
-          ></button>
-          <Button
-            id="actionButton"
-            ref={actionButtonRef}
-            className="roundButton"
-            title="Send Message"
-            onClick={() => {
-                if(agentManager && textAreaRef.current?.value) {
-                    agentManager.chat(textAreaRef.current.value)
-                }
-            }}
+          <input
+            type="text"
+            value={compatibilityMode}
+            placeholder="Compatibility Mode (on | off | auto)"
+            onChange={(e) =>
+              setCompatibilityMode(
+                e.currentTarget.value as "on" | "off" | "auto"
+              )
+            }
+          />
+          <select
+            value={mode}
+            onChange={(e) => setMode(e.currentTarget.value as ChatMode)}
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="26"
-              height="27"
-              viewBox="0 0 26 27"
-              fill="none"
-            >
-              <path
-                d="M10.8753 20.9288L15.8809 18.3172C20.2537 16.0357 22.4402 14.895 22.4402 13.0885C22.4402 11.2821 20.2537 10.1413 15.8809 7.85984L10.8753 5.24821C7.34598 3.40683 5.58133 2.48614 4.5583 2.76876C3.58508 3.03761 2.82497 3.83076 2.56732 4.84629C2.29649 5.91381 3.17881 7.75518 4.94346 11.4379C5.16215 11.8943 5.60928 12.198 6.09829 12.2003L14.0891 12.2391C14.5386 12.2413 14.9014 12.6234 14.8993 13.0925C14.8972 13.5616 14.531 13.9401 14.0815 13.9379L6.21975 13.8997C5.68076 13.8971 5.1845 14.2361 4.94346 14.7391C3.17882 18.4218 2.29648 20.2632 2.56732 21.3307C2.82497 22.3463 3.58507 23.1394 4.5583 23.4083C5.58133 23.6909 7.34599 22.7702 10.8753 20.9288Z"
-                fill="currentColor"
-              />
-            </svg>
-          </Button>
+            <option value={ChatMode.Functional}>{ChatMode.Functional}</option>
+            <option value={ChatMode.Playground}>{ChatMode.Playground}</option>
+            <option value={ChatMode.TextOnly}>{ChatMode.TextOnly}</option>
+            <option value={ChatMode.Maintenance}>{ChatMode.Maintenance}</option>
+            <option value={ChatMode.DirectPlayback}>
+              {ChatMode.DirectPlayback}
+            </option>
+          </select>
         </div>
-      </div>
-      <details id="answers" ref={answersRef} open>
-        <summary>
-          {" "}
-          Chat History{" "}
-          <svg
-            style={{ verticalAlign: "text-top" }}
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            fill="none"
-          >
-            <path
-              fill="currentcolor"
-              d="m13.087 21.388.645.382-.645-.382Zm.542-.916-.646-.382.646.382Zm-3.258 0-.645.382.645-.382Zm.542.916.646-.382-.646.382Zm-8.532-5.475.693-.287-.693.287Zm5.409 3.078-.013.75.013-.75Zm-2.703-.372-.287.693.287-.693Zm16.532-2.706.693.287-.693-.287Zm-5.409 3.078-.012-.75.012.75Zm2.703-.372.287.693-.287-.693Zm.7-15.882-.392.64.392-.64Zm1.65 1.65.64-.391-.64.392ZM4.388 2.738l-.392-.64.392.64Zm-1.651 1.65-.64-.391.64.392ZM9.403 19.21l.377-.649-.377.649Zm4.33 2.56.541-.916-1.29-.764-.543.916 1.291.764Zm-4.007-.916.542.916 1.29-.764-.541-.916-1.291.764Zm2.715.152a.52.52 0 0 1-.882 0l-1.291.764c.773 1.307 2.69 1.307 3.464 0l-1.29-.764ZM10.5 2.75h3v-1.5h-3v1.5Zm10.75 7.75v1h1.5v-1h-1.5Zm-18.5 1v-1h-1.5v1h1.5Zm-1.5 0c0 1.155 0 2.058.05 2.787.05.735.153 1.347.388 1.913l1.386-.574c-.147-.352-.233-.782-.278-1.441-.046-.666-.046-1.51-.046-2.685h-1.5Zm6.553 6.742c-1.256-.022-1.914-.102-2.43-.316L4.8 19.313c.805.334 1.721.408 2.977.43l.026-1.5ZM1.688 16.2A5.75 5.75 0 0 0 4.8 19.312l.574-1.386a4.25 4.25 0 0 1-2.3-2.3l-1.386.574Zm19.562-4.7c0 1.175 0 2.019-.046 2.685-.045.659-.131 1.089-.277 1.441l1.385.574c.235-.566.338-1.178.389-1.913.05-.729.049-1.632.049-2.787h-1.5Zm-5.027 8.241c1.256-.021 2.172-.095 2.977-.429l-.574-1.386c-.515.214-1.173.294-2.428.316l.025 1.5Zm4.704-4.115a4.25 4.25 0 0 1-2.3 2.3l.573 1.386a5.75 5.75 0 0 0 3.112-3.112l-1.386-.574ZM13.5 2.75c1.651 0 2.837 0 3.762.089.914.087 1.495.253 1.959.537l.783-1.279c-.739-.452-1.577-.654-2.6-.752-1.012-.096-2.282-.095-3.904-.095v1.5Zm9.25 7.75c0-1.622 0-2.891-.096-3.904-.097-1.023-.299-1.862-.751-2.6l-1.28.783c.285.464.451 1.045.538 1.96.088.924.089 2.11.089 3.761h1.5Zm-3.53-7.124a4.25 4.25 0 0 1 1.404 1.403l1.279-.783a5.75 5.75 0 0 0-1.899-1.899l-.783 1.28ZM10.5 1.25c-1.622 0-2.891 0-3.904.095-1.023.098-1.862.3-2.6.752l.783 1.28c.464-.285 1.045-.451 1.96-.538.924-.088 2.11-.089 3.761-.089v-1.5ZM2.75 10.5c0-1.651 0-2.837.089-3.762.087-.914.253-1.495.537-1.959l-1.279-.783c-.452.738-.654 1.577-.752 2.6C1.25 7.61 1.25 8.878 1.25 10.5h1.5Zm1.246-8.403a5.75 5.75 0 0 0-1.899 1.899l1.28.783a4.25 4.25 0 0 1 1.402-1.403l-.783-1.279Zm7.02 17.993c-.202-.343-.38-.646-.554-.884a2.229 2.229 0 0 0-.682-.645l-.754 1.297c.047.028.112.078.224.232.121.166.258.396.476.764l1.29-.764Zm-3.24-.349c.44.008.718.014.93.037.198.022.275.054.32.08l.754-1.297c-.293-.17-.598-.24-.909-.274-.298-.033-.657-.038-1.069-.045l-.025 1.5Zm6.498 1.113c.218-.367.355-.598.476-.764.112-.154.177-.204.224-.232l-.754-1.297c-.29.17-.5.395-.682.645-.173.238-.352.54-.555.884l1.291.764Zm1.924-2.612c-.412.007-.771.012-1.069.045-.311.035-.616.104-.909.274l.754 1.297c.045-.026.122-.058.32-.08.212-.023.49-.03.93-.037l-.026-1.5Z"
-            />
-            <path
-              stroke="currentcolor"
-              strokeLinecap="round"
-              strokeWidth="1.5"
-              d="M8 9h8M8 12.5h5.5"
-            />
-          </svg>
-        </summary>
-         <div className="p-2 space-y-2">
-            {messages.map((msg, index) => (
-                <div key={index} className={msg.role === 'assistant' ? 'agentMessage' : 'userMessage'}>
-                    {msg.content}
-                </div>
-            ))}
-        </div>
-      </details>
+        {messages.length > 0 && (
+          <pre>
+            {JSON.stringify(
+              messages.map((m: Message) => [m.role, m.content].join(": ")),
+              null,
+              4
+            )}
+          </pre>
+        )}
+      </footer>
     </div>
   );
 };
 
 export default AvatarView;
-
-    
