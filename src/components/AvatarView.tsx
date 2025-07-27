@@ -6,19 +6,16 @@ import { Card, CardContent } from "./ui/card";
 import { Button } from "./ui/button";
 
 const AvatarView = () => {
-  const [text, setText] = useState(
-    "Ben bobobobo sagi mamamama . bla raga ode ovem. lol cha cha cha cha cha . bobobobo. cha cha cha cha. bobobobo cha cha cha cha bobobobo. ssssssss cha cha cha cha cha bobobobo . cha cha cha cha bobobobo . cha cha cha cha. bobobobo ssssssss"
-  );
+  const [text, setText] = useState("Hello");
   const [mode, setMode] = useState<ChatMode>(ChatMode.Functional);
 
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  const nodeEnv = "prod";
   const didApiUrl = "https://api.d-id.com";
   const didSocketApiUrl = "wss://notifications.d-id.com";
   const agentId = "v2_agt_KCm-2Vmm";
   const clientKey =
-    "Z29vZ2xlLW9hdXRoMnwxMDE2MDE2MTMzODUzNTI2NTA4OTk6aFFSek04Y3FscHFWLUNTMkwwblhp";
+    "Z29vZ2xlLW9hdXRoMnwxMDE2MDE2MTMzODUzNTI2NTA4OTk6aFFTek04Y3FscHFWLUNTMkwwblhp";
 
   const {
     srcObject,
@@ -28,7 +25,7 @@ const AvatarView = () => {
     connect,
     disconnect,
     speak,
-    chat
+    chat,
   } = useAgentManager({
     agentId,
     baseURL: didApiUrl,
@@ -36,9 +33,7 @@ const AvatarView = () => {
     mode,
     enableAnalytics: false,
     auth: { type: "key", clientKey },
-    streamOptions: {
-
-    },
+    streamOptions: {},
   });
 
   async function onClick() {
@@ -59,83 +54,77 @@ const AvatarView = () => {
   }, [srcObject]);
 
   return (
-    < div style={{
-      display: 'flex',
-      flexDirection: 'column'
-    }}>
-     <Card className="mb-4">
-        <CardContent className="p-4 space-y-4">
-          <div id="left">
-            <textarea
-              // type="text"
-              placeholder="Enter text to stream"
-              value={text}
-              onInput={(e) => setText(e.currentTarget.value)}
-            />
-          </div>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
+      <Card className="mb-4">
+        <CardContent className="p-4 space-y-4 flex gap-4">
+          <textarea
+            // type="text"
+            placeholder="Enter text to stream"
+            value={text}
+            onInput={(e) => setText(e.currentTarget.value)}
+          />
 
-          <div id="right">
-            <fieldset
-              id="main-input"
-              disabled={connectionState === ConnectionState.Connecting}
+          <fieldset
+            id="main-input"
+            disabled={connectionState === ConnectionState.Connecting}
+          >
+            <Button
+              onClick={onClick}
+              disabled={
+                isSpeaking ||
+                (!text &&
+                  ![ConnectionState.New, ConnectionState.Fail].includes(
+                    connectionState
+                  ))
+              }
             >
-              <Button
-                onClick={onClick}
-                disabled={
-                  isSpeaking ||
-                  (!text &&
-                    ![ConnectionState.New, ConnectionState.Fail].includes(
-                      connectionState
-                    ))
-                }
-              >
-                {connectionState === ConnectionState.Connected
-                  ? "Send"
-                  : connectionState === ConnectionState.Connecting
-                  ? "Connecting..."
-                  : connectionState === ConnectionState.Fail
-                  ? "Failed, Try Again"
-                  : "Connect"}
-              </Button>
+              {connectionState === ConnectionState.Connected
+                ? "Send"
+                : connectionState === ConnectionState.Connecting
+                ? "Connecting..."
+                : connectionState === ConnectionState.Fail
+                ? "Failed, Try Again"
+                : "Connect"}
+            </Button>
 
-              <Button
+            {/* <Button
                 onClick={() => chat(text)}
                 disabled={
                   isSpeaking || connectionState !== ConnectionState.Connected
                 }
               >
                 Send to Chat
-              </Button>
+              </Button> */}
 
-              <Button
-                onClick={disconnect}
-                disabled={connectionState !== ConnectionState.Connected}
-              >
-                Close Connection
-              </Button>
-
-
-            </fieldset>
-          </div>
+            <Button
+              variant="outline"
+              onClick={disconnect}
+              disabled={connectionState !== ConnectionState.Connected}
+            >
+              Close Connection
+            </Button>
+          </fieldset>
         </CardContent>
-      
-    
       </Card>
       <main className="flex-1 flex flex-col gap-4">
-          <div className="flex-1 relative rounded-lg overflow-hidden bg-muted flex items-center justify-center">
-      <div id="app">
-      
-        <video
-          ref={videoRef}
-          id="main-video"
-          autoPlay
-          playsInline
-          className={
-            connectionState === ConnectionState.Connecting ? "animated" : ""
-          }
-        />
-      
-        {/* {messages.length > 0 && (
+        <div className="flex-1 relative rounded-lg overflow-hidden bg-muted flex items-center justify-center">
+          <div id="app">
+            <video
+              ref={videoRef}
+              id="main-video"
+              autoPlay
+              playsInline
+              className={
+                connectionState === ConnectionState.Connecting ? "animated" : ""
+              }
+            />
+
+            {/* {messages.length > 0 && (
           <pre>
             {JSON.stringify(
               messages.map((m: Message) => [m.role, m.content].join(": ")),
@@ -144,8 +133,8 @@ const AvatarView = () => {
             )}
           </pre>
         )} */}
-      </div>
-      </div>
+          </div>
+        </div>
       </main>
     </div>
   );
