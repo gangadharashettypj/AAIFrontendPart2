@@ -25,6 +25,7 @@ import { GeminiLiveAPI, GeminiLiveResponseMessage } from '@/lib/gemini-live-api'
 import { LiveAudioInputManager, LiveAudioOutputManager } from '@/lib/live-media-manager';
 import { useToast } from '@/hooks/use-toast';
 import ChalkText from '@/components/ChatText';
+import AvatarView from '@/components/AvatarView';
 
 type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'speaking';
 
@@ -46,10 +47,6 @@ export default function ClassroomPage() {
   const [micOn, setMicOn] = useState(false);
   const [cameraOn, setCameraOn] = useState(true);
   const [blackboardText, setBlackboardText] = useState('Welcome to the class!');
-
-  const [cameraOn2, setCameraOn2] = useState(true);
-  const [blackboardText2, setBlackboardText2] = useState('Second blackboard');
-
 
   // Live Agent State
   const [status, setStatus] = useState<ConnectionStatus>('disconnected');
@@ -184,24 +181,6 @@ export default function ClassroomPage() {
     }
   }, [cameraOn]);
 
-  useEffect(() => {
-    if (cameraOn2 && videoRef2.current) {
-      navigator.mediaDevices.getUserMedia({ video: true })
-        .then(stream => {
-          if (videoRef2.current) {
-            videoRef2.current.srcObject = stream;
-          }
-        })
-        .catch(err => console.error('Error accessing camera:', err));
-    } else {
-      if (videoRef2.current?.srcObject) {
-        const stream = videoRef2.current.srcObject as MediaStream;
-        stream.getTracks().forEach(track => track.stop());
-        videoRef2.current.srcObject = null;
-      }
-    }
-  }, [cameraOn2]);
-
   const StatusIndicator = () => {
     const iconClasses = 'w-5 h-5 mr-2';
     switch (status) {
@@ -267,21 +246,13 @@ export default function ClassroomPage() {
                 ) : (
                   <div className="w-full h-full flex flex-col gap-4 items-center justify-center">
                     <ChalkText text={blackboardText} />
-                    <Input value={blackboardText} onChange={(e) => setBlackboardText(e.target.value)} className="w-1/2" />
                   </div>
                 )}
               </CardContent>
             </Card>
             <Card className="flex-1 flex items-center justify-center">
                 <CardContent className="w-full h-full p-4">
-                    {cameraOn2 ? (
-                    <video ref={videoRef2} className="w-full h-full object-cover rounded-md" autoPlay playsInline muted />
-                    ) : (
-                    <div className="w-full h-full flex flex-col gap-4 items-center justify-center">
-                        <ChalkText text={blackboardText2} />
-                        <Input value={blackboardText2} onChange={(e) => setBlackboardText2(e.target.value)} className="w-1/2" />
-                    </div>
-                    )}
+                  <AvatarView />
                 </CardContent>
             </Card>
         </div>
@@ -307,9 +278,6 @@ export default function ClassroomPage() {
               <div className="flex gap-2">
                 <Button variant={cameraOn ? 'default' : 'destructive'} size="icon" className="rounded-full h-12 w-12" onClick={() => setCameraOn((prev) => !prev)}>
                     {cameraOn ? <VideoIcon className="h-6 w-6" /> : <VideoOff className="h-6 w-6" />}
-                </Button>
-                <Button variant={cameraOn2 ? 'default' : 'destructive'} size="icon" className="rounded-full h-12 w-12" onClick={() => setCameraOn2((prev) => !prev)}>
-                    {cameraOn2 ? <VideoIcon className="h-6 w-6" /> : <VideoOff className="h-6 w-6" />}
                 </Button>
               </div>
               <Button variant="destructive" size="icon" className="rounded-full h-12 w-12">
@@ -352,5 +320,4 @@ export default function ClassroomPage() {
       </AlertDialog>
     </>
   );
-
-    
+}
