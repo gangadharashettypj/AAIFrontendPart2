@@ -2,18 +2,14 @@ import { useAgentManager } from "@/hooks/useAgentManager";
 import { ChatMode, ConnectionState, Message } from "@d-id/client-sdk";
 
 import { useEffect, useRef, useState } from "react";
+import { Card, CardContent } from "./ui/card";
+import { Button } from "./ui/button";
 
 const AvatarView = () => {
-  const [warmup, setWarmup] = useState(true);
   const [text, setText] = useState(
     "Ben bobobobo sagi mamamama . bla raga ode ovem. lol cha cha cha cha cha . bobobobo. cha cha cha cha. bobobobo cha cha cha cha bobobobo. ssssssss cha cha cha cha cha bobobobo . cha cha cha cha bobobobo . cha cha cha cha. bobobobo ssssssss"
   );
   const [mode, setMode] = useState<ChatMode>(ChatMode.Functional);
-  const [sessionTimeout, setSessionTimeout] = useState<number | undefined>();
-  const [compatibilityMode, setCompatibilityMode] = useState<
-    "on" | "off" | "auto"
-  >();
-  const [fluent, setFluent] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -22,7 +18,7 @@ const AvatarView = () => {
   const didSocketApiUrl = "wss://notifications.d-id.com";
   const agentId = "v2_agt_KCm-2Vmm";
   const clientKey =
-    "Z29vZ2xlLW9hdXRoMnwxMDE2MDE2MTMzODUzNTI2NTA4OTk6aFFTek04Y3FscHFWLUNTMkwwblhp";
+    "Z29vZ2xlLW9hdXRoMnwxMDE2MDE2MTMzODUzNTI2NTA4OTk6aFFSek04Y3FscHFWLUNTMkwwblhp";
 
   const {
     srcObject,
@@ -32,8 +28,7 @@ const AvatarView = () => {
     connect,
     disconnect,
     speak,
-    chat,
-    interrupt,
+    chat
   } = useAgentManager({
     agentId,
     baseURL: didApiUrl,
@@ -42,10 +37,7 @@ const AvatarView = () => {
     enableAnalytics: false,
     auth: { type: "key", clientKey },
     streamOptions: {
-      streamWarmup: warmup,
-      sessionTimeout,
-      compatibilityMode,
-      fluent,
+
     },
   });
 
@@ -67,91 +59,72 @@ const AvatarView = () => {
   }, [srcObject]);
 
   return (
-    <div id="app">
-      <section>
-        <div id="left">
-          <textarea
-            // type="text"
-            placeholder="Enter text to stream"
-            value={text}
-            onInput={(e) => setText(e.currentTarget.value)}
-          />
-        </div>
+    < div style={{
+      display: 'flex',
+      flexDirection: 'column'
+    }}>
+     <Card className="mb-4">
+        <CardContent className="p-4 space-y-4">
+          <div id="left">
+            <textarea
+              // type="text"
+              placeholder="Enter text to stream"
+              value={text}
+              onInput={(e) => setText(e.currentTarget.value)}
+            />
+          </div>
 
-        <div id="right">
-          <fieldset
-            id="main-input"
-            disabled={connectionState === ConnectionState.Connecting}
-          >
-            <button
-              onClick={onClick}
-              disabled={
-                isSpeaking ||
-                (!text &&
-                  ![ConnectionState.New, ConnectionState.Fail].includes(
-                    connectionState
-                  ))
-              }
+          <div id="right">
+            <fieldset
+              id="main-input"
+              disabled={connectionState === ConnectionState.Connecting}
             >
-              {connectionState === ConnectionState.Connected
-                ? "Send"
-                : connectionState === ConnectionState.Connecting
-                ? "Connecting..."
-                : connectionState === ConnectionState.Fail
-                ? "Failed, Try Again"
-                : "Connect"}
-            </button>
+              <Button
+                onClick={onClick}
+                disabled={
+                  isSpeaking ||
+                  (!text &&
+                    ![ConnectionState.New, ConnectionState.Fail].includes(
+                      connectionState
+                    ))
+                }
+              >
+                {connectionState === ConnectionState.Connected
+                  ? "Send"
+                  : connectionState === ConnectionState.Connecting
+                  ? "Connecting..."
+                  : connectionState === ConnectionState.Fail
+                  ? "Failed, Try Again"
+                  : "Connect"}
+              </Button>
 
-            <button
-              onClick={() => chat(text)}
-              disabled={
-                isSpeaking || connectionState !== ConnectionState.Connected
-              }
-            >
-              Send to Chat
-            </button>
+              <Button
+                onClick={() => chat(text)}
+                disabled={
+                  isSpeaking || connectionState !== ConnectionState.Connected
+                }
+              >
+                Send to Chat
+              </Button>
 
-            <button
-              onClick={interrupt}
-              disabled={
-                connectionState !== ConnectionState.Connected || !fluent
-              }
-            >
-              Interrupt
-            </button>
+              <Button
+                onClick={disconnect}
+                disabled={connectionState !== ConnectionState.Connected}
+              >
+                Close Connection
+              </Button>
 
-            <button
-              onClick={disconnect}
-              disabled={connectionState !== ConnectionState.Connected}
-            >
-              Close Connection
-            </button>
 
-            <div className="input-options">
-              <label>
-                <input
-                  type="checkbox"
-                  name="warmup"
-                  checked={warmup}
-                  onChange={(e) => setWarmup(e.currentTarget.checked)}
-                />
-                Warmup
-              </label>
-
-              <label>
-                <input
-                  type="checkbox"
-                  name="fluent"
-                  checked={fluent}
-                  onChange={(e) => setFluent(e.currentTarget.checked)}
-                />
-                Fluent
-              </label>
-            </div>
-          </fieldset>
-        </div>
-      </section>
-      <footer>
+            </fieldset>
+          </div>
+        </CardContent>
+      
+    
+      </Card>
+      <main className="flex-1 flex flex-col gap-4">
+          <div className="flex-1 relative rounded-lg overflow-hidden bg-muted flex items-center justify-center">
+      <div id="app">
+      
         <video
           ref={videoRef}
           id="main-video"
@@ -161,39 +134,8 @@ const AvatarView = () => {
             connectionState === ConnectionState.Connecting ? "animated" : ""
           }
         />
-        <div id="options">
-          <input
-            type="text"
-            placeholder="Session Timeout"
-            value={sessionTimeout}
-            onChange={(e) =>
-              setSessionTimeout(parseInt(e.currentTarget.value) || undefined)
-            }
-          />
-          <input
-            type="text"
-            value={compatibilityMode}
-            placeholder="Compatibility Mode (on | off | auto)"
-            onChange={(e) =>
-              setCompatibilityMode(
-                e.currentTarget.value as "on" | "off" | "auto"
-              )
-            }
-          />
-          <select
-            value={mode}
-            onChange={(e) => setMode(e.currentTarget.value as ChatMode)}
-          >
-            <option value={ChatMode.Functional}>{ChatMode.Functional}</option>
-            <option value={ChatMode.Playground}>{ChatMode.Playground}</option>
-            <option value={ChatMode.TextOnly}>{ChatMode.TextOnly}</option>
-            <option value={ChatMode.Maintenance}>{ChatMode.Maintenance}</option>
-            <option value={ChatMode.DirectPlayback}>
-              {ChatMode.DirectPlayback}
-            </option>
-          </select>
-        </div>
-        {messages.length > 0 && (
+      
+        {/* {messages.length > 0 && (
           <pre>
             {JSON.stringify(
               messages.map((m: Message) => [m.role, m.content].join(": ")),
@@ -201,8 +143,10 @@ const AvatarView = () => {
               4
             )}
           </pre>
-        )}
-      </footer>
+        )} */}
+      </div>
+      </div>
+      </main>
     </div>
   );
 };

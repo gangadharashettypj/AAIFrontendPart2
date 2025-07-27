@@ -216,12 +216,9 @@ export default function ClassroomPage() {
         </Card>
 
         {/* Main Content: Video/Blackboard */}
-        <main className="flex-1 flex flex-col gap-4">
-          <div className="flex-1 relative rounded-lg overflow-hidden bg-muted flex items-center justify-center">
+        
              <AvatarView />
-          </div>
-        </main>
-
+          
         {/* Bottom Controls */}
         <footer className="w-full p-4 bg-background border-t border-border">
           <div className="flex justify-between items-center">
