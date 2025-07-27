@@ -62,7 +62,7 @@ const getCookie = (name: string): string | null => {
 
 export default function ClassroomPage() {
   const { toast } = useToast();
-  const [activeView, setActiveView] = useState<'video' | 'blackboard'>('video');
+  const [activeView, setActiveView] = useState<'video' | 'blackboard'>('blackboard');
   const [micOn, setMicOn] = useState(false);
   const [cameraOn, setCameraOn] = useState(true);
   const [chalkText, setChalkText] = useState('Welcome to the class!');
@@ -250,12 +250,13 @@ export default function ClassroomPage() {
                 )}
               </div>
             ) : (
-              <Textarea
-                className="w-full h-full resize-none text-2xl bg-white dark:bg-gray-800 border-0"
-                placeholder="Digital blackboard..."
-                value={chalkText}
-                onChange={(e) => setChalkText(e.target.value)}
-              />
+              // <Textarea
+              //   className="w-full h-full resize-none text-2xl bg-white dark:bg-gray-800 border-0"
+              //   placeholder="Digital blackboard..."
+              //   value={chalkText}
+              //   onChange={(e) => setChalkText(e.target.value)}
+              // />
+              <ChalkText text={chalkText} />
             )}
         </div>
       </main>
