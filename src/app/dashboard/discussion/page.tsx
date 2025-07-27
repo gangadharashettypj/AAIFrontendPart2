@@ -37,6 +37,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import ChalkText from "@/components/ChatText";
 import AvatarView from "@/components/AvatarView";
+import { postData } from "@/lib/ragApi";
 
 type ConnectionStatus =
   | "disconnected"
@@ -59,7 +60,7 @@ const getCookie = (name: string): string | null => {
   return cookieValue ? decodeURIComponent(cookieValue.pop() || "") : null;
 };
 
-export default function ClassroomPage() {
+export default function DiscussionPage() {
   const { toast } = useToast();
   const [micOn, setMicOn] = useState(false);
   const [cameraOn, setCameraOn] = useState(false);
@@ -71,6 +72,7 @@ export default function ClassroomPage() {
   const [dialogMessage, setDialogMessage] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedMic, setSelectedMic] = useState<string>("");
+  const [messages, setMessages] = useState<string>("");
 
   const geminiApiRef = useRef<GeminiLiveAPI | null>(null);
   const audioInManagerRef = useRef<LiveAudioInputManager | null>(null);
@@ -115,6 +117,25 @@ export default function ClassroomPage() {
     getDevices();
   }, [getDevices]);
 
+  useEffect(() => {
+    const interval = setTimeout(() => {
+      if (messages === "") {
+        return;
+      }
+      console.log(messages);
+      postData(messages).then((res) => {
+        if (res) {
+          console.log("API Response:", res);
+        } else {
+          console.log("Failed to get a valid response");
+        }
+      });
+      setMessages("");
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [messages]);
+
   const handleConnect = () => {
     setStatus("connecting");
 
@@ -130,7 +151,7 @@ export default function ClassroomPage() {
       API_HOST
     );
     geminiApiRef.current = api;
-    api.responseModalities = ["AUDIO"];
+    api.responseModalities = ["TEXT"];
     api.systemInstructions =
       "You are a helpful teaching assistant in a classroom.";
 
@@ -145,11 +166,8 @@ export default function ClassroomPage() {
       showDialog(message);
       setStatus("disconnected");
     };
-
     api.onReceiveResponse = (messageResponse: GeminiLiveResponseMessage) => {
-      if (messageResponse.type === "AUDIO") {
-        audioOutManagerRef.current?.playAudioChunk(messageResponse.data);
-      }
+      setMessages((prev) => (prev += messageResponse.data));
     };
 
     api.setProjectId(projectId);
@@ -280,19 +298,9 @@ export default function ClassroomPage() {
         <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4">
           <Card className="flex-1 flex items-center justify-center">
             <CardContent className="w-full h-full p-4">
-              {cameraOn ? (
-                <video
-                  ref={videoRef}
-                  className="w-full h-full object-cover rounded-md"
-                  autoPlay
-                  playsInline
-                  muted
-                />
-              ) : (
-                <div className="w-full h-full flex flex-col gap-4 items-center justify-center">
-                  <ChalkText text={blackboardText} />
-                </div>
-              )}
+              <div className="w-full h-full flex flex-col gap-4 items-center justify-center">
+                <ChalkText text={blackboardText} />
+              </div>
             </CardContent>
           </Card>
           <Card className="flex-1 flex items-center justify-center">
