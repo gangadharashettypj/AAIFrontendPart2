@@ -149,7 +149,7 @@ export function LiveAgent() {
   const handleConnect = () => {
     setStatus("connecting");
 
-    const PROXY_URL = "wss://e8a4850bacdc.ngrok-free.app";
+    const PROXY_URL = "wss://0124d96229a7.ngrok-free.app"
 
     const MODEL = "gemini-2.0-flash-live-preview-04-09";
     const API_HOST = "us-central1-aiplatform.googleapis.com";
