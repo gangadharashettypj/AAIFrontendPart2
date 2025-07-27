@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 body {
-  font-family: 'Roboto', sans-serif;
+  font-family: "Roboto", sans-serif;
 }
 
 @layer base {
@@ -122,4 +122,15 @@ body {
     --tw-prose-th-borders: hsl(var(--border));
     --tw-prose-td-borders: hsl(var(--border));
   }
+}
+
+@font-face {
+  font-family: "Chalk"; /*Can be any text*/
+  src: local("EraserDust"), url("./../fonts/EraserDust.ttf");
+}
+
+@font-face {
+  font-family: "ChalkRegular"; /*Can be any text*/
+  src: local("EraserRegular"),
+    url("./../fonts/EraserRegular.ttf") format("truetype");
 }

@@ -1,30 +1,31 @@
-'use client';
+"use client";
 
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
-import { Users, BookOpen, CheckSquare } from 'lucide-react';
-import { useAuth } from '@/hooks/use-auth';
+import React from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Users, BookOpen, CheckSquare } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
+import ChalkText from "@/components/ChatText";
 
 const stats = [
   {
-    title: 'Students Enrolled',
-    value: '125',
+    title: "Students Enrolled",
+    value: "125",
     icon: Users,
-    color: 'text-blue-500',
+    color: "text-blue-500",
   },
   {
-    title: 'Active Classes',
-    value: '8',
+    title: "Active Classes",
+    value: "8",
     icon: BookOpen,
-    color: 'text-green-500',
+    color: "text-green-500",
   },
   {
-    title: 'Assignments Graded',
-    value: '234',
+    title: "Assignments Graded",
+    value: "234",
     icon: CheckSquare,
-    color: 'text-orange-500',
+    color: "text-orange-500",
   },
 ];
 
@@ -37,7 +38,7 @@ export default function DashboardPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-3xl font-bold tracking-tight font-headline">
-            Welcome back, {user?.displayName || 'Jessica'}!
+            Welcome back, {user?.displayName || "Jessica"}!
           </h2>
           <p className="text-muted-foreground">
             Here's a summary of your teaching activities.
@@ -54,7 +55,6 @@ export default function DashboardPage() {
           />
         </div>
       </div>
-
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {stats.map((stat) => (
           <Card key={stat.title}>
@@ -62,7 +62,9 @@ export default function DashboardPage() {
               <CardTitle className="text-sm font-medium">
                 {stat.title}
               </CardTitle>
-              <stat.icon className={`h-4 w-4 text-muted-foreground ${stat.color}`} />
+              <stat.icon
+                className={`h-4 w-4 text-muted-foreground ${stat.color}`}
+              />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stat.value}</div>
@@ -73,22 +75,25 @@ export default function DashboardPage() {
           </Card>
         ))}
       </div>
-
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Upcoming Deadlines</CardTitle>
           </CardHeader>
           <CardContent>
-             <ul className="space-y-4">
+            <ul className="space-y-4">
               <li className="flex items-center gap-4">
                 <div className="bg-secondary/20 text-secondary p-2 rounded-lg">
                   <div className="font-bold text-sm">MAY</div>
                   <div className="font-bold text-lg text-center">25</div>
                 </div>
                 <div>
-                  <p className="font-semibold">Grade 8 - Science Fair Project</p>
-                  <p className="text-sm text-muted-foreground">Submission closes at 11:59 PM</p>
+                  <p className="font-semibold">
+                    Grade 8 - Science Fair Project
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Submission closes at 11:59 PM
+                  </p>
                 </div>
               </li>
               <li className="flex items-center gap-4">
@@ -98,7 +103,9 @@ export default function DashboardPage() {
                 </div>
                 <div>
                   <p className="font-semibold">Grade 7 - History Essay</p>
-                  <p className="text-sm text-muted-foreground">Submission closes at 11:59 PM</p>
+                  <p className="text-sm text-muted-foreground">
+                    Submission closes at 11:59 PM
+                  </p>
                 </div>
               </li>
             </ul>
