@@ -5,20 +5,22 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
 import './AvatarView.css';
-import { AgentManager } from '@d-id/client-sdk';
+import { AgentManager, createAgentManager } from '@d-id/client-sdk';
 
 type DIDAgentManager = AgentManager | undefined;
 
 const AvatarView = () => {
-  const [agentManager, setAgentManager] = useState<DIDAgentManager>(undefined);
+
+  
+  const [agentManager, setAgentManager] = useState<AgentManager | undefined>(undefined);
   const [connection, setConnection] = useState<string>('Connecting..');
 
   useEffect(() => {
     async function init() {
-      const newAgentManager = await new AgentManager({
+      const newAgentManager = await createAgentManager("v2_agt_KCm-2Vmm", {
         auth: {
           type: 'key',
-          clientKey: process.env.NEXT_PUBLIC_D_ID_API_KEY,
+          clientKey: process.env.NEXT_PUBLIC_D_ID_API_KEY!!,
         },
         avatars: {
           initial: {
