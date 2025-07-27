@@ -12,7 +12,6 @@ import {
   ScreenShare,
   Users,
   MessageSquare,
-  Newspaper,
   Video as VideoIcon,
   CloudOff,
   Hourglass,
@@ -25,7 +24,7 @@ import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogHea
 import { GeminiLiveAPI, GeminiLiveResponseMessage } from '@/lib/gemini-live-api';
 import { LiveAudioInputManager, LiveAudioOutputManager } from '@/lib/live-media-manager';
 import { useToast } from '@/hooks/use-toast';
-import AvatarView from '@/components/AvatarView';
+import ChalkText from '@/components/ChatText';
 
 type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'speaking';
 
@@ -46,11 +45,11 @@ export default function ClassroomPage() {
   const { toast } = useToast();
   const [micOn, setMicOn] = useState(false);
   const [cameraOn, setCameraOn] = useState(true);
+  const [blackboardText, setBlackboardText] = useState('Welcome to the class!');
 
   // Live Agent State
   const [status, setStatus] = useState<ConnectionStatus>('disconnected');
   const [accessToken, setAccessToken] = useState('');
-  const projectId = 'nestbees';
   const [dialogMessage, setDialogMessage] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedMic, setSelectedMic] = useState<string>('');
@@ -58,6 +57,7 @@ export default function ClassroomPage() {
   const geminiApiRef = useRef<GeminiLiveAPI | null>(null);
   const audioInManagerRef = useRef<LiveAudioInputManager | null>(null);
   const audioOutManagerRef = useRef<LiveAudioOutputManager | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     setAccessToken(getCookie('token') || '');
@@ -75,7 +75,7 @@ export default function ClassroomPage() {
   const getDevices = useCallback(async () => {
     if (typeof navigator === 'undefined' || !navigator.mediaDevices) return;
     try {
-      await navigator.mediaDevices.getUserMedia({ audio: true });
+      await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
       const enumeratedDevices = await navigator.mediaDevices.enumerateDevices();
       const audioDevice = enumeratedDevices.find((d) => d.kind === 'audioinput');
       if (audioDevice) setSelectedMic(audioDevice.deviceId);
@@ -99,6 +99,7 @@ export default function ClassroomPage() {
     const PROXY_URL = 'wss://e8a4850bacdc.ngrok-free.app';
     const MODEL = 'gemini-2.0-flash-live-preview-04-09';
     const API_HOST = 'us-central1-aiplatform.googleapis.com';
+    const projectId = 'nestbees';
 
     const api = new GeminiLiveAPI(PROXY_URL.toString(), projectId, MODEL, API_HOST);
     geminiApiRef.current = api;
@@ -159,6 +160,24 @@ export default function ClassroomPage() {
     }
   };
 
+  useEffect(() => {
+    if (cameraOn && videoRef.current) {
+      navigator.mediaDevices.getUserMedia({ video: true })
+        .then(stream => {
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+          }
+        })
+        .catch(err => console.error('Error accessing camera:', err));
+    } else {
+      if (videoRef.current?.srcObject) {
+        const stream = videoRef.current.srcObject as MediaStream;
+        stream.getTracks().forEach(track => track.stop());
+        videoRef.current.srcObject = null;
+      }
+    }
+  }, [cameraOn]);
+
   const StatusIndicator = () => {
     const iconClasses = 'w-5 h-5 mr-2';
     switch (status) {
@@ -216,18 +235,24 @@ export default function ClassroomPage() {
         </Card>
 
         {/* Main Content: Video/Blackboard */}
-        
-             <AvatarView />
+        <Card className="flex-1 flex items-center justify-center">
+          <CardContent className="w-full h-full p-4">
+            {cameraOn ? (
+              <video ref={videoRef} className="w-full h-full object-cover rounded-md" autoPlay playsInline muted />
+            ) : (
+              <div className="w-full h-full flex flex-col gap-4 items-center justify-center">
+                <ChalkText text={blackboardText} />
+                <Input value={blackboardText} onChange={(e) => setBlackboardText(e.target.value)} className="w-1/2" />
+              </div>
+            )}
+          </CardContent>
+        </Card>
           
         {/* Bottom Controls */}
-        <footer className="w-full p-4 bg-background border-t border-border">
+        <footer className="w-full p-4 bg-background border-t border-border mt-4">
           <div className="flex justify-between items-center">
             {/* Left: View Switch */}
             <div className="flex gap-2">
-              <Button variant={'secondary'} size="sm">
-                <VideoIcon className="mr-2 h-4 w-4" />
-                Video
-              </Button>
             </div>
 
             {/* Center: Core Controls */}
@@ -284,4 +309,5 @@ export default function ClassroomPage() {
       </AlertDialog>
     </>
   );
-}
+
+    
